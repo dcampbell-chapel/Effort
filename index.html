@@ -3,12 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Behavior Tracker (Firebase Firestore)</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Student Behavior Tracker (Pure CSS & Firestore)</title>
+    <!-- REMOVED Tailwind CDN script to eliminate production warning -->
+    
+    <!-- Font Awesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
+    
     <style>
+        /* BASE STYLES & FONT */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { 
+            font-family: 'Inter', sans-serif;
+            background-color: #f9fafb; /* bg-gray-50 */
+            min-height: 100vh;
+            padding: 1rem; /* p-4 */
+        }
+        @media (min-width: 640px) { /* sm:p-8 */
+            body { padding: 2rem; }
+        }
+        
+        /* LAYOUT & CONTAINERS */
+        .container {
+            max-width: 1152px; /* max-w-6xl */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* HEADER & TYPOGRAPHY */
+        .header-section { margin-bottom: 1.5rem; /* mb-6 */ }
+        .h1-title { 
+            font-size: 1.875rem; /* text-3xl */
+            font-weight: 700; /* font-bold */
+            color: #b91c1c; /* text-red-700 */
+        }
+        .text-lead { color: #4b5563; /* text-gray-600 */ }
+        .text-meta { font-size: 0.75rem; color: #9ca3af; /* text-xs text-gray-400 */ }
+
+        /* ACTION BAR & CONTROLS */
+        .action-bar {
+            display: flex;
+            flex-direction: column; /* flex-col */
+            justify-content: space-between;
+            align-items: flex-start; /* items-start */
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* shadow-md */
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        @media (min-width: 640px) { /* sm:flex-row, sm:items-center */
+            .action-bar {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        .action-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem; /* mb-4 */
+            gap: 1.5rem; /* space-x-6 */
+        }
+        @media (min-width: 640px) {
+            .action-group {
+                margin-bottom: 0; /* sm:mb-0 */
+            }
+        }
+
+        /* INPUTS & SELECTS */
+        .form-control {
+            padding: 0.5rem; /* p-2 */
+            border: 1px solid #d1d5db; /* border border-gray-300 */
+            border-radius: 0.5rem; /* rounded-lg */
+            transition: all 0.15s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: #ef4444; /* focus:border-red-500 */
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.5); /* focus:ring-red-500 equivalent */
+        }
+        .label { font-weight: 600; color: #4b5563; margin-right: 0.75rem; /* mr-3 */ }
+        
+        /* PRIMARY BUTTON */
+        .btn-primary {
+            background-color: #dc2626; /* bg-red-600 */
+            color: white;
+            padding: 0.5rem 1rem; /* px-4 py-2 */
+            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 600;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
+            transition: all 0.15s;
+        }
+        .btn-primary:hover {
+            background-color: #b91c1c; /* hover:bg-red-700 */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.18); /* hover:shadow-xl */
+        }
+        
+        /* GRID STYLES */
+        .tracker-wrapper {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); /* shadow-lg */
+            overflow: hidden;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr repeat(5, minmax(60px, 0.5fr));
+        }
+        @media (max-width: 640px) {
+            .main-grid {
+                grid-template-columns: 1fr repeat(5, 50px);
+            }
+        }
+        
+        .grid-header {
+            background-color: #e5e7eb; /* bg-gray-200 */
+            font-weight: 600; /* font-semibold */
+            color: #4b5563; /* text-gray-700 */
+            border-top-left-radius: 0.75rem; /* rounded-t-lg */
+            border-top-right-radius: 0.75rem;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
+        }
+
+        .grid-header-cell {
+            padding: 0.5rem; /* p-2 */
+            border-right: 1px solid #d1d5db; /* border-r border-gray-300 */
+            display: flex;
+            align-items: center;
+        }
+        .grid-header-cell:last-child { border-right: none; }
+        
         .grid-header-icon {
             display: flex;
             flex-direction: column;
@@ -18,7 +144,44 @@
             cursor: default;
             user-select: none;
             padding: 4px;
+            text-align: center;
+            font-size: 0.875rem; /* text-sm */
+            transition: color 0.15s;
         }
+        .grid-header-icon .fas, .grid-header-icon .far {
+            font-size: 1.125rem; /* text-lg */
+            margin-bottom: 0.25rem; /* mb-1 */
+        }
+        .grid-header-icon:hover .fas, .grid-header-icon:hover .far {
+            color: #dc2626; /* group-hover:text-red-600 */
+        }
+        .grid-header-icon span {
+            font-size: 0.75rem; /* text-xs */
+            line-height: 1.25; /* leading-none */
+        }
+        .grid-header-icon span:first-of-type { display: none; } /* hidden sm:inline */
+        @media (min-width: 640px) {
+            .grid-header-icon span:first-of-type { display: inline; }
+            .grid-header-icon span:last-of-type { display: none; } /* sm:hidden */
+        }
+
+        /* GRID ROWS (STUDENTS) */
+        .grid-row-cell {
+            padding: 0.5rem;
+            font-size: 0.875rem; /* text-sm */
+            border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
+            white-space: nowrap;
+        }
+        .grid-row-name {
+            font-weight: 500; /* font-medium */
+            color: #111827; /* text-gray-900 */
+            overflow: hidden;
+            text-overflow: ellipsis; /* truncate */
+        }
+        .grid-row-name span { font-size: 0.75rem; color: #6b7280; } /* text-xs text-gray-500 */
+        .bg-odd { background-color: white; }
+        .bg-even { background-color: #f3f4f6; } /* bg-gray-100 */
+
         .incident-cell {
             cursor: pointer;
             transition: all 0.15s ease-in-out;
@@ -26,30 +189,164 @@
             align-items: center;
             justify-content: center;
             height: 100%;
+            color: #9ca3af; /* text-gray-400 */
         }
         .incident-cell:hover {
             background-color: #e5e7eb; /* Light gray on hover */
         }
         .logged {
-            background-color: #fca5a5; /* Red-300 for logged incident */
-            color: #b91c1c; /* Red-700 text color */
+            background-color: #fca5a5; /* Red-300 */
+            color: #991b1b; /* Red-800 */
             font-weight: 600;
         }
         .logged:hover {
-            background-color: #f87171; /* Slightly darker red on hover to indicate clickability */
+            background-color: #f87171; /* Slightly darker red on hover */
         }
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr repeat(5, minmax(60px, 0.5fr));
+
+        /* REPORT SECTION */
+        .report-section {
+            margin-top: 2.5rem; /* mt-10 */
+            padding: 1.5rem; /* p-6 */
+            background-color: #fef2f2; /* bg-red-50 */
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
         }
-        @media (max-width: 640px) {
-            .main-grid {
-                grid-template-columns: 1fr repeat(5, 50px); /* Narrower columns for mobile */
-            }
+        .h2-report {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700;
+            color: #b91c1c;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #fecaca; /* border-b pb-2 */
+            padding-bottom: 0.5rem;
         }
+        .report-content {
+            padding: 1rem;
+            background-color: white;
+            border-radius: 0.5rem;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); /* shadow-inner */
+            margin-top: 1rem;
+        }
+        .report-table-wrapper { overflow-x: auto; }
+        .report-table { 
+            width: 100%;
+            font-size: 0.875rem;
+            text-align: left;
+            border-collapse: collapse;
+            color: #6b7280;
+        }
+        .report-table th, .report-table td { padding: 0.5rem 0.5rem; }
+        .report-table thead { 
+            font-size: 0.75rem; 
+            color: #4b5563; 
+            text-transform: uppercase; 
+            background-color: #f3f4f6;
+        }
+        .report-table td { border-bottom: 1px solid #e5e7eb; }
+        .report-table tbody tr:last-child td { border-bottom: none; }
+        
+        .sticky-col { 
+            position: sticky; 
+            left: 0; 
+            z-index: 10; 
+            font-weight: 500;
+            color: #111827;
+        }
+        .bg-today { background-color: #fef3c7; font-weight: 700; } /* bg-yellow-100 font-bold */
+        .bg-today.sticky-col { background-color: #fef3c7; }
+
+        .total-cell { font-weight: 800; color: #dc2626; } /* font-extrabold text-red-600 */
+        .total-header { font-weight: 800; color: #b91c1c; } /* font-extrabold text-red-700 */
+
+        .incident-count {
+            background-color: #fecaca; /* bg-red-200 */
+            color: #991b1b; /* text-red-800 */
+            border-radius: 9999px; /* rounded-full */
+            padding: 0.125rem 0.5rem; /* px-2 py-0.5 */
+            font-size: 0.75rem;
+        }
+        
+        /* MODAL STYLES */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(17, 24, 39, 0.8); /* bg-gray-900 bg-opacity-75 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
+            width: 100%;
+            max-width: 32rem; /* max-w-lg */
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.3s;
+        }
+        .modal-overlay.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f3f4f6; /* bg-gray-100 */
+        }
+        .modal-body-section { padding: 1rem; }
+        .modal-footer {
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+            text-align: right;
+        }
+        
+        .btn-secondary {
+            background-color: #e5e7eb; /* bg-gray-200 */
+            color: #374151; /* text-gray-700 */
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.15s;
+        }
+        .btn-secondary:hover { background-color: #d1d5db; /* hover:bg-gray-300 */ }
+        
+        .input-group { display: flex; gap: 0.5rem; /* space-x-2 */ }
+        .input-group input:first-child { flex-grow: 1; }
+        .input-group input:nth-child(2) { width: 25%; } /* w-1/4 */
+
+        .student-list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.5rem;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .student-list-item:last-child { border-bottom: none; }
+
+        .btn-delete {
+            color: #ef4444; /* text-red-500 */
+            background-color: #fef2f2; /* bg-red-100 */
+            padding: 0.25rem;
+            border-radius: 9999px;
+            transition: color 0.15s;
+        }
+        .btn-delete:hover { color: #b91c1c; /* hover:text-red-700 */ }
+
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+<body>
 
     <script type="module">
         // --- FIREBASE IMPORTS ---
@@ -61,7 +358,7 @@
         let students = [];
         let incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-category': { docId: docId, ...incidentData } } }
         let currentTrackingDate;
-        let currentClassFilter = 'All'; // NEW: Default to showing all classes
+        let currentClassFilter = 'All'; 
         let isAuthReady = false;
 
         // --- FIREBASE VARIABLES ---
@@ -79,14 +376,14 @@
         const today = formatDate(new Date());
         currentTrackingDate = today; 
         
-        // NEW: Get unique classes
+        // Get unique classes
         const getUniqueClasses = () => {
             const classes = students.map(s => s.class).filter(c => c); // Get all non-empty classes
             const uniqueClasses = [...new Set(classes)]; // Get unique list
             return ['All', ...uniqueClasses.sort()]; // Add 'All' and sort
         };
 
-        // NEW: Function to update the class filter dropdown options
+        // Function to update the class filter dropdown options
         const updateClassFilterOptions = () => {
             const classSelect = document.getElementById('class-filter-select');
             if (!classSelect) return;
@@ -111,8 +408,17 @@
         // --- FIREBASE INITIALIZATION & AUTH ---
         window.initializeFirebase = async () => {
             try {
-                // Initialize Config
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+                // Check if the config is valid JSON before parsing, otherwise use an empty object
+                let firebaseConfig = {};
+                if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
+                    try {
+                        firebaseConfig = JSON.parse(__firebase_config);
+                    } catch (e) {
+                        console.error("Error parsing __firebase_config, using empty config:", e);
+                    }
+                }
+                
+                // Initialize App (This is now safer against missing projectId)
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);
@@ -153,7 +459,7 @@
                 
             } catch (error) {
                 console.error("Firebase initialization failed:", error);
-                document.getElementById('tracker-grid').innerHTML = '<div class="p-4 text-red-600 font-bold">Error initializing Firebase. Check console for details.</div>';
+                document.getElementById('tracker-grid').innerHTML = '<div class="grid-row-cell text-red-700 font-bold">Error initializing Firebase. Check console for details.</div>';
             }
         };
 
@@ -169,7 +475,7 @@
                 students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 // Sort students alphabetically
                 students.sort((a, b) => a.name.localeCompare(b.name)); 
-                updateClassFilterOptions(); // NEW: Update the class dropdown options
+                updateClassFilterOptions(); // Update the class dropdown options
                 renderTracker();
                 renderStudentManagementList();
                 renderReport(); // Update report options
@@ -257,7 +563,7 @@
             renderTracker();
         };
 
-        // NEW: Function to handle class filter change
+        // Function to handle class filter change
         window.changeClassFilter = (event) => {
             currentClassFilter = event.target.value;
             renderTracker();
@@ -268,17 +574,17 @@
             if (!gridContainer) return;
 
             if (userId === 'loading') {
-                gridContainer.innerHTML = '<div class="p-4 text-gray-500 flex items-center justify-center"><i class="fas fa-spinner fa-spin mr-2"></i> Initializing App...</div>';
+                gridContainer.innerHTML = '<div class="grid-row-cell text-gray-500" style="display:flex; align-items:center; justify-content:center; padding:1rem;"><i class="fas fa-spinner fa-spin" style="margin-right:0.5rem;"></i> Initializing App...</div>';
                 return;
             }
             
-            // NEW: Filter students based on the current class selection
+            // Filter students based on the current class selection
             const filteredStudents = students.filter(student => 
                 currentClassFilter === 'All' || student.class === currentClassFilter
             );
 
             if (filteredStudents.length === 0) {
-                gridContainer.innerHTML = '<div class="p-4 text-gray-500">No students found for the selected class.</div>';
+                gridContainer.innerHTML = '<div class="grid-row-cell text-gray-500" style="padding:1rem;">No students found for the selected class.</div>';
                 return;
             }
 
@@ -286,13 +592,13 @@
 
             let html = `
                 <!-- Grid Header -->
-                <div class="main-grid bg-gray-200 font-semibold text-gray-700 rounded-t-lg shadow-sm">
-                    <div class="p-2 border-r border-gray-300 flex items-center">Student Name</div>
+                <div class="main-grid grid-header">
+                    <div class="grid-header-cell">Student Name</div>
                     ${behaviorCategories.map(cat => `
-                        <div class="p-1 border-r border-gray-300 last:border-r-0 text-center text-xs sm:text-sm grid-header-icon group" title="${cat.description}">
-                            <i class="${cat.icon} text-lg mb-1 group-hover:text-red-600 transition-colors"></i>
-                            <span class="hidden sm:inline">${cat.name}</span>
-                            <span class="sm:hidden text-xs leading-none">${cat.id}</span>
+                        <div class="grid-header-cell grid-header-icon" title="${cat.description}">
+                            <i class="${cat.icon}"></i>
+                            <span class="desktop-name">${cat.name}</span>
+                            <span class="mobile-id">${cat.id}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -301,16 +607,16 @@
             // Grid Rows (Students)
             filteredStudents.forEach((student, index) => { // Iterate over filtered students
                 const isEven = index % 2 === 0;
-                const rowClass = isEven ? 'bg-white' : 'bg-gray-100';
+                const rowClass = isEven ? 'bg-odd' : 'bg-even';
 
                 html += `
-                    <div class="main-grid ${rowClass} border-b border-gray-200 text-sm">
-                        <div class="p-2 truncate font-medium text-gray-900">${student.name} <span class="text-xs text-gray-500">(${student.class})</span></div>
+                    <div class="main-grid ${rowClass}">
+                        <div class="grid-row-cell grid-row-name">${student.name} <span>(${student.class})</span></div>
                         ${behaviorCategories.map(cat => {
                             // Student.id here is the Firestore document ID
                             const key = `${student.id}-${cat.id}`; 
                             const isLogged = !!dateIncidents[key];
-                            const cellClass = isLogged ? 'logged text-red-800' : 'text-gray-400';
+                            const cellClass = isLogged ? 'logged' : '';
                             return `
                                 <div class="incident-cell ${cellClass}" 
                                      onclick="toggleIncident('${student.id}', ${cat.id})"
@@ -324,6 +630,20 @@
             });
 
             gridContainer.innerHTML = html;
+            
+            // Fix for desktop/mobile visibility of header icons after rendering
+            const styleElement = document.createElement('style');
+            styleElement.textContent = `
+                @media (min-width: 640px) {
+                    .grid-header-icon .mobile-id { display: none; }
+                    .grid-header-icon .desktop-name { display: inline; }
+                }
+                @media (max-width: 639px) {
+                    .grid-header-icon .mobile-id { display: inline; }
+                    .grid-header-icon .desktop-name { display: none; }
+                }
+            `;
+            gridContainer.appendChild(styleElement);
         };
 
 
@@ -348,7 +668,7 @@
             
             const selectedStudentId = currentSelectedId;
             if (!selectedStudentId) {
-                reportContainer.innerHTML = '<p class="text-gray-500 p-4">Select a student to view their 3-Week Incident Report.</p>';
+                reportContainer.innerHTML = '<p class="grid-row-cell text-gray-500" style="padding:1rem;">Select a student to view their 3-Week Incident Report.</p>';
                 return;
             }
 
@@ -387,36 +707,36 @@
             const student = students.find(s => s.id === selectedStudentId);
 
             let reportHTML = `
-                <div class="p-4 bg-white rounded-lg shadow-inner mt-4">
-                    <h4 class="text-xl font-bold text-red-700 mb-4">3-Week Incident Report for ${student.name}</h4>
-                    <p class="text-lg font-semibold mb-2">Total Incidents (Last 21 Days): <span class="text-2xl text-red-600">${totalIncidents}</span></p>
-                    <p class="text-sm text-gray-500 mb-4">Tracking period: ${formatReportDate(formatDate(startDate))} - ${formatReportDate(today)}</p>
+                <div class="report-content">
+                    <h4 class="h1-title" style="font-size: 1.25rem; margin-bottom: 1rem;">3-Week Incident Report for ${student.name}</h4>
+                    <p style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Total Incidents (Last 21 Days): <span style="font-size: 1.5rem; color: #dc2626;">${totalIncidents}</span></p>
+                    <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">Tracking period: ${formatReportDate(formatDate(startDate))} - ${formatReportDate(today)}</p>
 
-                    <h5 class="font-bold text-gray-700 mb-2">Daily Breakdown:</h5>
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-sm text-left text-gray-500 border-collapse">
-                            <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                    <h5 style="font-weight: 700; color: #4b5563; margin-bottom: 0.5rem;">Daily Breakdown:</h5>
+                    <div class="report-table-wrapper">
+                        <table class="report-table">
+                            <thead>
                                 <tr>
-                                    <th scope="col" class="px-2 py-2 sticky left-0 bg-gray-100 z-10">Date</th>
-                                    ${behaviorCategories.map(cat => `<th scope="col" class="px-2 py-2 text-center" title="${cat.description}">${cat.name.split(' ')[0]}</th>`).join('')}
-                                    <th scope="col" class="px-2 py-2 text-center font-extrabold text-red-700">TOTAL</th>
+                                    <th scope="col" class="sticky-col" style="background-color: #f3f4f6;">Date</th>
+                                    ${behaviorCategories.map(cat => `<th scope="col" style="text-align: center;" title="${cat.description}">${cat.name.split(' ')[0]}</th>`).join('')}
+                                    <th scope="col" class="total-header" style="text-align: center;">TOTAL</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${Object.keys(dailyBreakdown).sort().map(dateKey => {
                                     const dailyData = dailyBreakdown[dateKey];
                                     const isToday = dateKey === today;
-                                    const rowClass = isToday ? 'bg-yellow-100 font-bold' : 'bg-white';
+                                    const rowClass = isToday ? 'bg-today' : 'bg-odd';
 
                                     return `
-                                        <tr class="border-b ${rowClass}">
-                                            <td class="px-2 py-1 sticky left-0 ${rowClass} font-medium text-gray-900 whitespace-nowrap z-10">${formatReportDate(dateKey)}</td>
+                                        <tr class="${rowClass}">
+                                            <td class="sticky-col ${rowClass}">${formatReportDate(dateKey)}</td>
                                             ${behaviorCategories.map(cat => `
-                                                <td class="px-2 py-1 text-center">
-                                                    ${dailyData[cat.id] > 0 ? `<span class="bg-red-200 text-red-800 rounded-full px-2 py-0.5">${dailyData[cat.id]}</span>` : '-'}
+                                                <td style="text-align: center;">
+                                                    ${dailyData[cat.id] > 0 ? `<span class="incident-count">${dailyData[cat.id]}</span>` : '-'}
                                                 </td>
                                             `).join('')}
-                                            <td class="px-2 py-1 text-center font-extrabold text-red-600">
+                                            <td class="total-cell" style="text-align: center;">
                                                 ${dailyData.total > 0 ? dailyData.total : '-'}
                                             </td>
                                         </tr>
@@ -436,8 +756,8 @@
 
         window.openModal = (modalId) => {
             const modal = document.getElementById(modalId);
-            modal.classList.remove('hidden');
-            document.body.classList.add('overflow-hidden');
+            modal.classList.add('visible');
+            document.body.style.overflow = 'hidden';
             if (modalId === 'manage-students-modal') {
                 renderStudentManagementList();
             }
@@ -445,8 +765,8 @@
 
         window.closeModal = (modalId) => {
             const modal = document.getElementById(modalId);
-            modal.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
+            modal.classList.remove('visible');
+            document.body.style.overflow = '';
         };
 
         window.addStudent = async () => {
@@ -513,10 +833,10 @@
         window.renderStudentManagementList = () => {
             const listContainer = document.getElementById('student-list-container');
             listContainer.innerHTML = students.map(s => `
-                <div class="flex items-center justify-between p-2 border-b last:border-b-0">
-                    <span class="font-medium">${s.name} <span class="text-xs text-gray-500">(${s.class})</span></span>
-                    <button onclick="deleteStudent('${s.id}', '${s.name}')" class="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full bg-red-100">
-                        <i class="fas fa-trash-alt text-sm"></i>
+                <div class="student-list-item">
+                    <span class="font-medium">${s.name} <span style="font-size: 0.75rem; color: #6b7280;">(${s.class})</span></span>
+                    <button onclick="deleteStudent('${s.id}', '${s.name}')" class="btn-delete">
+                        <i class="fas fa-trash-alt" style="font-size: 0.875rem;"></i>
                     </button>
                 </div>
             `).join('');
@@ -537,99 +857,99 @@
 
 
     <!-- MAIN APPLICATION CONTAINER -->
-    <div class="max-w-6xl mx-auto">
-        <header class="mb-6">
-            <h1 class="text-3xl font-bold text-red-700">Daily Behavior Tracker</h1>
-            <p class="text-gray-600">Click a cell to instantly log an incident for the selected date. **Data is synced using Firebase Firestore.**</p>
-            <p id="user-id-display" class="text-xs text-gray-400 mt-1">User ID: Loading...</p>
+    <div class="container">
+        <header class="header-section">
+            <h1 class="h1-title">Daily Behavior Tracker</h1>
+            <p class="text-lead">Click a cell to instantly log an incident for the selected date. **Data is synced using Firebase Firestore.**</p>
+            <p id="user-id-display" class="text-meta" style="margin-top: 0.25rem;">User ID: Loading...</p>
         </header>
 
         <!-- Tracking Date & Actions -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 p-4 bg-white shadow-md rounded-xl">
-            <div class="flex items-center space-x-6 mb-4 sm:mb-0">
+        <div class="action-bar">
+            <div class="action-group">
                 <!-- Date Picker -->
-                <div class="flex items-center">
-                    <label for="date-picker" class="font-semibold text-gray-700 mr-3">Date:</label>
+                <div style="display: flex; align-items: center;">
+                    <label for="date-picker" class="label">Date:</label>
                     <input type="date" id="date-picker" onchange="changeDate(event)" 
-                           class="p-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150">
+                           class="form-control">
                 </div>
                 
-                <!-- Class Filter (NEW) -->
-                <div class="flex items-center">
-                    <label for="class-filter-select" class="font-semibold text-gray-700 mr-3">Class:</label>
+                <!-- Class Filter -->
+                <div style="display: flex; align-items: center;">
+                    <label for="class-filter-select" class="label">Class:</label>
                     <select id="class-filter-select" onchange="changeClassFilter(event)"
-                            class="p-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150">
+                            class="form-control">
                         <!-- Options generated dynamically -->
                     </select>
                 </div>
             </div>
             
             <button onclick="openModal('manage-students-modal')"
-                    class="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition duration-150 shadow-lg hover:shadow-xl">
-                <i class="fas fa-users-cog mr-2"></i> Manage Students
+                    class="btn-primary" style="margin-top: 0.5rem; /* for small screens */">
+                <i class="fas fa-users-cog" style="margin-right: 0.5rem;"></i> Manage Students
             </button>
         </div>
 
         <!-- TRACKING GRID -->
-        <div id="tracker-container" class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div id="tracker-container" class="tracker-wrapper">
             <div id="tracker-grid">
                 <!-- Content generated by renderTracker() -->
-                <div class="p-4 text-center text-gray-500 flex items-center justify-center"><i class="fas fa-spinner fa-spin mr-2"></i> Waiting for Firebase connection...</div>
+                <div class="grid-row-cell text-gray-500" style="display:flex; align-items:center; justify-content:center; padding:1rem;"><i class="fas fa-spinner fa-spin" style="margin-right:0.5rem;"></i> Waiting for Firebase connection...</div>
             </div>
         </div>
 
         <!-- REPORTING SECTION -->
-        <div class="mt-10 p-6 bg-red-50 rounded-xl shadow-xl">
-            <h2 class="text-2xl font-bold text-red-700 mb-4 border-b pb-2">3-Week Reporting View</h2>
-            <div class="flex flex-col sm:flex-row items-start sm:items-center mb-4">
-                <label for="report-student-select" class="font-semibold text-gray-700 mr-3">Select Student for Report:</label>
+        <div class="report-section">
+            <h2 class="h2-report">3-Week Reporting View</h2>
+            <div style="display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 1rem;">
+                <label for="report-student-select" class="label">Select Student for Report:</label>
                 <select id="report-student-select" onchange="renderReport()"
-                        class="mt-1 sm:mt-0 p-2 border border-gray-300 rounded-lg w-full sm:w-w-auto focus:ring-red-500 focus:border-red-500 transition duration-150">
+                        class="form-control" style="width: 100%; margin-top: 0.25rem;">
                     <option value="">-- Select Student --</option>
                     <!-- Options populated by renderReport() -->
                 </select>
             </div>
             <div id="report-view">
-                <p class="text-gray-500 p-4">Select a student to view their 3-Week Incident Report.</p>
+                <p class="grid-row-cell text-gray-500" style="padding:1rem;">Select a student to view their 3-Week Incident Report.</p>
             </div>
         </div>
     </div>
 
 
     <!-- MANAGE STUDENTS MODAL -->
-    <div id="manage-students-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+    <div id="manage-students-modal" class="modal-overlay">
+        <div class="modal-content">
             <!-- Modal Header -->
-            <div class="p-4 border-b flex justify-between items-center bg-gray-100">
-                <h3 class="text-xl font-bold text-red-700">Manage Students</h3>
-                <button onclick="closeModal('manage-students-modal')" class="text-gray-500 hover:text-gray-800">
-                    <i class="fas fa-times text-2xl"></i>
+            <div class="modal-header">
+                <h3 class="h1-title" style="font-size: 1.25rem;">Manage Students</h3>
+                <button onclick="closeModal('manage-students-modal')" style="color: #6b7280;">
+                    <i class="fas fa-times" style="font-size: 1.5rem;"></i>
                 </button>
             </div>
             
             <!-- Add New Student Section -->
-            <div class="p-4 border-b">
-                <h4 class="font-semibold mb-2">Add New Student</h4>
-                <div class="flex space-x-2">
-                    <input type="text" id="new-student-name" placeholder="Name (e.g., Alex Johnson)" class="flex-grow p-2 border rounded-lg">
-                    <input type="text" id="new-student-class" placeholder="Class (Optional)" class="w-1/4 p-2 border rounded-lg">
-                    <button onclick="addStudent()" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition">
+            <div class="modal-body-section" style="border-bottom: 1px solid #e5e7eb;">
+                <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Add New Student</h4>
+                <div class="input-group">
+                    <input type="text" id="new-student-name" placeholder="Name (e.g., Alex Johnson)" class="form-control">
+                    <input type="text" id="new-student-class" placeholder="Class (Optional)" class="form-control">
+                    <button onclick="addStudent()" class="btn-primary" style="padding: 0.5rem 0.75rem;">
                         <i class="fas fa-plus"></i> Add
                     </button>
                 </div>
             </div>
 
             <!-- Student List Section -->
-            <div class="p-4 max-h-80 overflow-y-auto">
-                <h4 class="font-semibold mb-2">Current Students</h4>
-                <div id="student-list-container" class="space-y-1">
+            <div class="modal-body-section" style="max-height: 20rem; overflow-y: auto;">
+                <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Current Students</h4>
+                <div id="student-list-container" style="display: flex; flex-direction: column; gap: 0.25rem;">
                     <!-- Student list generated by renderStudentManagementList() -->
-                    <div class="text-center text-gray-400">Loading student list...</div>
+                    <div style="text-align: center; color: #9ca3af;">Loading student list...</div>
                 </div>
             </div>
 
-            <div class="p-4 border-t text-right">
-                 <button onclick="closeModal('manage-students-modal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+            <div class="modal-footer">
+                 <button onclick="closeModal('manage-students-modal')" class="btn-secondary">
                     Done
                 </button>
             </div>

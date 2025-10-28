@@ -408,17 +408,21 @@
         // --- FIREBASE INITIALIZATION & AUTH ---
         window.initializeFirebase = async () => {
             try {
-                // Check if the config is valid JSON before parsing, otherwise use an empty object
+                // START ISSUE 2 FIX: Robustly handle missing or invalid __firebase_config
                 let firebaseConfig = {};
                 if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
                     try {
+                        // Attempt to parse the config string
                         firebaseConfig = JSON.parse(__firebase_config);
                     } catch (e) {
-                        console.error("Error parsing __firebase_config, using empty config:", e);
+                        // If parsing fails (invalid JSON), log the error and keep firebaseConfig as {}
+                        console.error("Error parsing __firebase_config. Using empty config for initialization:", e);
+                        // firebaseConfig is already {}
                     }
                 }
+                // END ISSUE 2 FIX
                 
-                // Initialize App (This is now safer against missing projectId)
+                // Initialize App with the safe config (empty {} is allowed for anonymous use)
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app);

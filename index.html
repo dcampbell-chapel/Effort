@@ -407,64 +407,66 @@
 
         // --- FIREBASE INITIALIZATION & AUTH ---
         window.initializeFirebase = async () => {
-            try {
-                // START ISSUE 2 FIX: Robustly handle missing or invalid __firebase_config
-                let firebaseConfig = {};
-                if (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '') {
+          try {
+            // ✅ Direct Firebase configuration (from your Firebase console)
+            const firebaseConfig = {
+              apiKey: "AIzaSyDlsGbo2qdX9HkLbwPYIyvDGDEsWrIboXY",
+              authDomain: "effort-51e3c.firebaseapp.com",
+              projectId: "effort-51e3c",
+              storageBucket: "effort-51e3c.firebasestorage.app",
+              messagingSenderId: "182442171",
+              appId: "1:182442171:web:b64125daa653c82855319e",
+              measurementId: "G-YQ70LMPHX8"
+            };
+
+            // Initialize Firebase with your project configuration
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+
+            // (Optional) Analytics support
+            import("https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js")
+              .then(({ getAnalytics }) => getAnalytics(app))
+              .catch(() => console.warn("Analytics module not loaded (optional)"));
+
+            // Sign-in logic
+            await new Promise(resolve => {
+              const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                unsubscribe();
+                if (user) {
+                  userId = user.uid;
+                } else {
+                  // Use custom token if available, otherwise sign in anonymously
+                  if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     try {
-                        // Attempt to parse the config string
-                        firebaseConfig = JSON.parse(__firebase_config);
-                    } catch (e) {
-                        // If parsing fails (invalid JSON), log the error and keep firebaseConfig as {}
-                        console.error("Error parsing __firebase_config. Using empty config for initialization:", e);
-                        // firebaseConfig is already {}
+                      const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+                      userId = userCredential.user.uid;
+                    } catch (error) {
+                      console.error("Custom token sign-in failed, signing in anonymously:", error);
+                      const userCredential = await signInAnonymously(auth);
+                      userId = userCredential.user.uid;
                     }
+                  } else {
+                    const userCredential = await signInAnonymously(auth);
+                    userId = userCredential.user.uid;
+                  }
                 }
-                // END ISSUE 2 FIX
-                
-                // Initialize App with the safe config (empty {} is allowed for anonymous use)
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-                
-                // Optional: setLogLevel('debug');
+                isAuthReady = true;
+                document.getElementById("user-id-display").textContent =
+                  `User ID: ${userId.substring(0, 8)}... (App: effort-51e3c)`;
+                resolve();
+              });
+            });
 
-                // Sign in logic
-                await new Promise(resolve => {
-                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                        unsubscribe(); // Stop listening after the first event
-                        if (user) {
-                            userId = user.uid;
-                        } else {
-                            // Use custom token if available, otherwise sign in anonymously
-                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                                try {
-                                    const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
-                                    userId = userCredential.user.uid;
-                                } catch (error) {
-                                    console.error("Custom token sign-in failed, signing in anonymously:", error);
-                                    const userCredential = await signInAnonymously(auth);
-                                    userId = userCredential.user.uid;
-                                }
-                            } else {
-                                const userCredential = await signInAnonymously(auth);
-                                userId = userCredential.user.uid;
-                            }
-                        }
-                        isAuthReady = true;
-                        document.getElementById('user-id-display').textContent = `User ID: ${userId.substring(0, 8)}... (App: ${appId.substring(0, 8)}...)`;
-                        resolve();
-                    });
-                });
+            // Start data listeners once authenticated
+            listenToStudents();
+            listenToIncidents();
 
-                // Start data listeners once authenticated
-                listenToStudents();
-                listenToIncidents();
-                
-            } catch (error) {
-                console.error("Firebase initialization failed:", error);
-                document.getElementById('tracker-grid').innerHTML = '<div class="grid-row-cell text-red-700 font-bold">Error initializing Firebase. Check console for details.</div>';
-            }
+          } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            document.getElementById("tracker-grid").innerHTML =
+              '<div class="grid-row-cell text-red-700 font-bold">Error initializing Firebase. Check console for details.</div>';
+          }
         };
 
         // --- FIREBASE REAL-TIME LISTENERS (Replaces loadStudents/loadIncidents) ---

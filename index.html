@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Behavior Tracker (Local Storage)</title>
+    <title>Student Behavior Tracker (Firebase Firestore)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -52,104 +52,127 @@
 <body class="bg-gray-50 min-h-screen p-4 sm:p-8">
 
     <script type="module">
+        // --- FIREBASE IMPORTS ---
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
         // --- GLOBAL VARIABLES ---
         let students = [];
-        // { 'YYYY-MM-DD': { 'studentId-category': { id: uuid, ...incidentData } } }
-        let incidentsByDate = {}; 
+        let incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-category': { docId: docId, ...incidentData } } }
         let currentTrackingDate;
+        let isAuthReady = false;
 
-        // --- LOCAL STORAGE CONSTANTS ---
-        const STUDENT_KEY = 'sbt_students';
-        const INCIDENT_KEY = 'sbt_incidents';
+        // --- FIREBASE VARIABLES ---
+        let db;
+        let auth;
+        let userId = 'loading';
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        
+        // Collection path builders
+        const STUDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/students`;
+        const INCIDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/incidents`;
 
         // --- UTILITY FUNCTIONS ---
         const formatDate = (date) => date.toISOString().split('T')[0];
         const today = formatDate(new Date());
         currentTrackingDate = today; 
 
-        // Local Storage Helpers
-        const loadData = (key) => {
+        // --- FIREBASE INITIALIZATION & AUTH ---
+        window.initializeFirebase = async () => {
             try {
-                const json = localStorage.getItem(key);
-                return json ? JSON.parse(json) : [];
-            } catch (e) {
-                console.error(`Error loading data from localStorage for key ${key}:`, e);
-                return [];
+                // Initialize Config
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                // Optional: setLogLevel('debug');
+
+                // Sign in logic
+                await new Promise(resolve => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        unsubscribe(); // Stop listening after the first event
+                        if (user) {
+                            userId = user.uid;
+                        } else {
+                            // Use custom token if available, otherwise sign in anonymously
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                try {
+                                    const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
+                                    userId = userCredential.user.uid;
+                                } catch (error) {
+                                    console.error("Custom token sign-in failed, signing in anonymously:", error);
+                                    const userCredential = await signInAnonymously(auth);
+                                    userId = userCredential.user.uid;
+                                }
+                            } else {
+                                const userCredential = await signInAnonymously(auth);
+                                userId = userCredential.user.uid;
+                            }
+                        }
+                        isAuthReady = true;
+                        document.getElementById('user-id-display').textContent = `User ID: ${userId.substring(0, 8)}... (App: ${appId.substring(0, 8)}...)`;
+                        resolve();
+                    });
+                });
+
+                // Start data listeners once authenticated
+                listenToStudents();
+                listenToIncidents();
+                
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                document.getElementById('tracker-grid').innerHTML = '<div class="p-4 text-red-600 font-bold">Error initializing Firebase. Check console for details.</div>';
             }
         };
 
-        const saveData = (key, data) => {
-            try {
-                localStorage.setItem(key, JSON.stringify(data));
-            } catch (e) {
-                console.error(`Error saving data to localStorage for key ${key}:`, e);
-            }
-        };
-
-        // Data Management Functions (Replaces Firestore Listeners)
-        window.loadStudents = () => {
-            // Load and sort students
-            students = loadData(STUDENT_KEY).sort((a, b) => a.name.localeCompare(b.name));
-            renderTracker();
-            renderStudentManagementList();
-            // Re-run the report in case student selection options changed
-            renderReport(); 
-        };
-
-        window.loadIncidents = () => {
-            const rawIncidents = loadData(INCIDENT_KEY);
-            const newIncidents = {};
-            rawIncidents.forEach(data => {
-                const key = `${data.studentId}-${data.category}`;
-                // Use a map of date -> key -> raw incident object for quick lookup
-                if (!newIncidents[data.date]) {
-                    newIncidents[data.date] = {};
-                }
-                newIncidents[data.date][key] = data; 
-            });
-            incidentsByDate = newIncidents;
-            renderTracker();
-            renderReport();
-        };
-
-        // Pre-loaded students 
-        const defaultStudents = [
-            // Class F/G
-            { name: "Geraldo A", class: "F/G" }, { name: "Guilherme A", class: "F/G" }, { name: "Mirela C", class: "F/G" },
-            { name: "Maria Luiza C", class: "F/G" }, { name: "Caio C", class: "F/G" }, { name: "Joaquim F", class: "F/G" },
-            { name: "Sophia F", class: "F/G" }, { name: "Sofia G", class: "F/G" }, { name: "Enrico L", class: "F/G" },
-            { name: "Miguel L", class: "F/G" }, { name: "Ryan L", class: "F/G" }, { name: "Gabriel M", class: "F/G" },
-            { name: "Leonardo N", class: "F/G" }, { name: "Sophia O", class: "F/G" }, { name: "Rafael P", class: "F/G" },
-            { name: "Manuela P", class: "F/G" }, { name: "Manuela R", class: "F/G" }, { name: "Rafaella R", class: "F/G" },
-            { name: "Isabela S", class: "F/G" }, { name: "Samantha S", class: "F/G" }, { name: "Sophia T", class: "F/G" },
-            { name: "Julia X", class: "F/G" }, { name: "Isabella Y", class: "F/G" },
-            // Class C
-            { name: "Valentina A", class: "C" }, { name: "Mariana A", class: "C" }, { name: "JP Berger", class: "C" },
-            { name: "Rafaela B", class: "C" }, { name: "Felipe C", class: "C" }, { name: "João C", class: "C" },
-            { name: "Matheus", class: "C" }, { name: "Lorena C", class: "C" }, { name: "Antonio D", class: "C" },
-            { name: "Lucas G", class: "C" }, { name: "Maria Antonia J", class: "C" }, { name: "Lucca K", class: "C" },
-            { name: "Anna Beatriz L", class: "C" }, { name: "Eduardo L", class: "C" }, { name: "Sarah L", class: "C" },
-            { name: "Sofia M", class: "C" }, { name: "Ana Luisa N", class: "C" }, { name: "Nina P", class: "C" },
-            { name: "Maria P A", class: "C" }, { name: "Rafael R", "class": "C" }, { name: "Julia R", class: "C" },
-            { name: "Arthur T", class: "C" }, { name: "Helena T", class: "C" }, { name: "Eduardo V", class: "C" }
-        ];
-
-        // Function to create default students if local storage is empty
-        const initializeData = () => {
-            const existingStudents = loadData(STUDENT_KEY);
+        // --- FIREBASE REAL-TIME LISTENERS (Replaces loadStudents/loadIncidents) ---
+        
+        const listenToStudents = () => {
+             if (!isAuthReady) return;
             
-            if (existingStudents.length === 0) {
-                console.log("Local storage empty. Loading default students.");
-                const studentsToSave = defaultStudents.map(student => ({
-                    ...student, 
-                    id: crypto.randomUUID(), // Assign a local unique ID
-                    createdAt: Date.now()
-                }));
-                saveData(STUDENT_KEY, studentsToSave);
-            }
-            // Load all data into memory and render the UI
-            loadStudents();
-            loadIncidents();
+            const studentsRef = collection(db, STUDENTS_COLLECTION());
+
+            // Listen for real-time updates
+            onSnapshot(studentsRef, (snapshot) => {
+                students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                // Sort students alphabetically
+                students.sort((a, b) => a.name.localeCompare(b.name)); 
+                renderTracker();
+                renderStudentManagementList();
+                renderReport(); // Update report options
+            }, (error) => {
+                console.error("Error listening to students:", error);
+            });
+        };
+
+        const listenToIncidents = () => {
+            if (!isAuthReady) return;
+
+            const incidentsRef = collection(db, INCIDENTS_COLLECTION());
+            
+            // Listen for real-time updates
+            onSnapshot(incidentsRef, (snapshot) => {
+                const newIncidentsByDate = {};
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const docId = doc.id;
+                    const key = `${data.studentId}-${data.category}`;
+                    
+                    if (!newIncidentsByDate[data.date]) {
+                        newIncidentsByDate[data.date] = {};
+                    }
+                    // Store the document ID for easy deletion
+                    newIncidentsByDate[data.date][key] = { ...data, docId }; 
+                });
+
+                incidentsByDate = newIncidentsByDate;
+                renderTracker(); // Update tracker grid
+                renderReport(); // Update report data
+            }, (error) => {
+                console.error("Error listening to incidents:", error);
+            });
         };
 
 
@@ -163,34 +186,36 @@
         ];
 
 
-        // --- CORE TRACKING LOGIC (Local Storage CRUD) ---
+        // --- CORE TRACKING LOGIC (Firestore CRUD) ---
 
-        window.toggleIncident = (studentId, categoryId) => {
-            const key = `${studentId}-${categoryId}`;
+        window.toggleIncident = async (studentDocId, categoryId) => {
+            if (!isAuthReady) return console.warn("Firebase not ready.");
+
+            const key = `${studentDocId}-${categoryId}`;
             const dateIncidents = incidentsByDate[currentTrackingDate] || {};
             const existingIncident = dateIncidents[key];
-            let allIncidents = loadData(INCIDENT_KEY);
 
-            if (existingIncident) {
-                // Incident exists, delete it (undo)
-                allIncidents = allIncidents.filter(i => i.id !== existingIncident.id);
-                console.log(`Incident deleted for ${key} on ${currentTrackingDate}`);
-            } else {
-                // Incident does not exist, add it
-                const newIncident = {
-                    id: crypto.randomUUID(),
-                    studentId: studentId,
-                    category: categoryId,
-                    date: currentTrackingDate,
-                    timestamp: Date.now(),
-                };
-                allIncidents.push(newIncident);
-                console.log(`Incident logged for ${key} on ${currentTrackingDate}`);
+            try {
+                if (existingIncident) {
+                    // Incident exists, delete it (undo)
+                    const docRef = doc(db, INCIDENTS_COLLECTION(), existingIncident.docId);
+                    await deleteDoc(docRef);
+                    console.log(`Incident deleted for ${key} on ${currentTrackingDate}`);
+                } else {
+                    // Incident does not exist, add it
+                    const newIncident = {
+                        studentId: studentDocId, // Use the student document ID
+                        category: categoryId,
+                        date: currentTrackingDate,
+                        timestamp: Date.now(),
+                    };
+                    await addDoc(collection(db, INCIDENTS_COLLECTION()), newIncident);
+                    console.log(`Incident logged for ${key} on ${currentTrackingDate}`);
+                }
+                // UI update will be handled by the real-time listener (onSnapshot)
+            } catch (e) {
+                console.error("Error toggling incident:", e);
             }
-            
-            saveData(INCIDENT_KEY, allIncidents);
-            // Manually refresh data and UI
-            loadIncidents();
         };
 
 
@@ -199,14 +224,17 @@
         window.changeDate = (event) => {
             currentTrackingDate = event.target.value;
             renderTracker();
-            // Report view auto-updates via the loadIncidents call, but we call it here to ensure consistency
-            renderReport(); 
+            // No need to call renderReport/listenToIncidents here, as students/incidents are global and update via snapshot
         };
 
         window.renderTracker = () => {
             const gridContainer = document.getElementById('tracker-grid');
             if (!gridContainer) return;
 
+            if (userId === 'loading') {
+                gridContainer.innerHTML = '<div class="p-4 text-gray-500 flex items-center justify-center"><i class="fas fa-spinner fa-spin mr-2"></i> Initializing App...</div>';
+                return;
+            }
             if (students.length === 0) {
                 gridContainer.innerHTML = '<div class="p-4 text-gray-500">No students found. Add students via the Manage Students button.</div>';
                 return;
@@ -237,7 +265,8 @@
                     <div class="main-grid ${rowClass} border-b border-gray-200 text-sm">
                         <div class="p-2 truncate font-medium text-gray-900">${student.name} <span class="text-xs text-gray-500">(${student.class})</span></div>
                         ${behaviorCategories.map(cat => {
-                            const key = `${student.id}-${cat.id}`;
+                            // Student.id here is the Firestore document ID
+                            const key = `${student.id}-${cat.id}`; 
                             const isLogged = !!dateIncidents[key];
                             const cellClass = isLogged ? 'logged text-red-800' : 'text-gray-400';
                             return `
@@ -303,7 +332,8 @@
             Object.keys(incidentsByDate).forEach(dateKey => {
                 if (dailyBreakdown[dateKey]) {
                     Object.values(incidentsByDate[dateKey]).forEach(incident => {
-                        if (incident.studentId === selectedStudentId) {
+                        // Incident data now contains the docId and studentId (which is the student's doc ID)
+                        if (incident.studentId === selectedStudentId) { 
                             dailyBreakdown[dateKey][incident.category]++;
                             dailyBreakdown[dateKey].total++;
                             totalIncidents++;
@@ -360,7 +390,7 @@
         };
 
 
-        // --- MODAL & STUDENT MANAGEMENT LOGIC (Local Storage CRUD) ---
+        // --- MODAL & STUDENT MANAGEMENT LOGIC (Firestore CRUD) ---
 
         window.openModal = (modalId) => {
             const modal = document.getElementById(modalId);
@@ -377,7 +407,9 @@
             document.body.classList.remove('overflow-hidden');
         };
 
-        window.addStudent = () => {
+        window.addStudent = async () => {
+            if (!isAuthReady) return console.warn("Firebase not ready.");
+
             const nameInput = document.getElementById('new-student-name');
             const classInput = document.getElementById('new-student-class');
             const name = nameInput.value.trim();
@@ -389,45 +421,48 @@
             }
 
             try {
-                const allStudents = loadData(STUDENT_KEY);
+                // Add new student document to Firestore
                 const newStudent = {
-                    id: crypto.randomUUID(),
                     name: name,
                     class: className,
                     createdAt: Date.now()
                 };
-                allStudents.push(newStudent);
-                saveData(STUDENT_KEY, allStudents);
+                await addDoc(collection(db, STUDENTS_COLLECTION()), newStudent);
                 
                 nameInput.value = ''; 
                 classInput.value = '';
                 
-                loadStudents(); // Manually refresh data and UI
+                // UI update handled by listenToStudents (onSnapshot)
             } catch (e) {
                 console.error("Error adding student:", e);
             }
         };
 
-        window.deleteStudent = (studentId, studentName) => {
-            console.log(`Deleting ${studentName}.`);
+        window.deleteStudent = async (studentDocId, studentName) => {
+            if (!isAuthReady) return console.warn("Firebase not ready.");
+            console.log(`Deleting ${studentName} (ID: ${studentDocId}).`);
 
             try {
-                // 1. Delete Student
-                const allStudents = loadData(STUDENT_KEY);
-                const newStudents = allStudents.filter(s => s.id !== studentId);
-                saveData(STUDENT_KEY, newStudents);
+                // 1. Delete ALL Incidents for this student
+                const incidentsRef = collection(db, INCIDENTS_COLLECTION());
+                const q = query(incidentsRef, where("studentId", "==", studentDocId));
+                const incidentSnapshot = await getDocs(q);
 
-                // 2. Delete ALL Incidents for this student
-                const allIncidents = loadData(INCIDENT_KEY);
-                const newIncidents = allIncidents.filter(i => i.studentId !== studentId);
-                saveData(INCIDENT_KEY, newIncidents);
-
-                console.log(`Student ${studentName} and all incidents deleted.`);
+                const deletePromises = [];
+                incidentSnapshot.docs.forEach(doc => {
+                    deletePromises.push(deleteDoc(doc.ref));
+                });
+                await Promise.all(deletePromises);
                 
-                // Manually refresh data and UI
-                loadStudents();
-                loadIncidents();
-                renderStudentManagementList();
+                console.log(`${deletePromises.length} incidents deleted.`);
+
+                // 2. Delete Student
+                const studentDocRef = doc(db, STUDENTS_COLLECTION(), studentDocId);
+                await deleteDoc(studentDocRef);
+
+                console.log(`Student ${studentName} deleted.`);
+                
+                // UI updates handled by real-time listeners (onSnapshot)
             } catch (e) {
                 console.error("Error deleting student or incidents:", e);
             }
@@ -452,8 +487,8 @@
             document.getElementById('date-picker').max = today;
             document.getElementById('date-picker').value = today;
             
-            // Start the application by loading/initializing data
-            initializeData();
+            // Start Firebase initialization and listening
+            initializeFirebase();
         });
 
     </script>
@@ -463,7 +498,8 @@
     <div class="max-w-6xl mx-auto">
         <header class="mb-6">
             <h1 class="text-3xl font-bold text-red-700">Daily Behavior Tracker</h1>
-            <p class="text-gray-600">Click a cell to instantly log an incident for the selected date. **All data is saved locally in your browser.**</p>
+            <p class="text-gray-600">Click a cell to instantly log an incident for the selected date. **Data is synced using Firebase Firestore.**</p>
+            <p id="user-id-display" class="text-xs text-gray-400 mt-1">User ID: Loading...</p>
         </header>
 
         <!-- Tracking Date & Actions -->
@@ -484,7 +520,7 @@
         <div id="tracker-container" class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div id="tracker-grid">
                 <!-- Content generated by renderTracker() -->
-                <div class="p-4 text-center text-gray-500">Loading students and data...</div>
+                <div class="p-4 text-center text-gray-500 flex items-center justify-center"><i class="fas fa-spinner fa-spin mr-2"></i> Waiting for Firebase connection...</div>
             </div>
         </div>
 

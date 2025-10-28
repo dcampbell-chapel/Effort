@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Behavior Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .grid-header-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            cursor: default;
+            user-select: none;
+            padding: 4px;
+        }
+        .incident-cell {
+            cursor: pointer;
+            transition: all 0.15s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        .incident-cell:hover {
+            background-color: #e5e7eb; /* Light gray on hover */
+        }
+        .logged {
+            background-color: #fca5a5; /* Red-300 for logged incident */
+            color: #b91c1c; /* Red-700 text color */
+            font-weight: 600;
+        }
+        .logged:hover {
+            background-color: #f87171; /* Slightly darker red on hover to indicate clickability */
+        }
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr repeat(5, minmax(60px, 0.5fr));
+        }
+        @media (max-width: 640px) {
+            .main-grid {
+                grid-template-columns: 1fr repeat(5, 50px); /* Narrower columns for mobile */
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen p-4 sm:p-8">
+
+    <!-- Firebase Imports and Setup -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, query, onSnapshot, setDoc, deleteDoc, serverTimestamp, getDocs, orderBy, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL VARIABLES ---
+        let app;
+        let db;
+        let auth;
+        let userId = 'loading'; // Will be set after auth
+        let students = [];
+        let incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-category': { incidentDoc } } }
+        let currentTrackingDate;
+
+        // --- FIREBASE INITIALIZATION AND AUTH ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+            
+            // Sign in or use existing token
+            const initialAuth = async () => {
+                const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                if (authToken) {
+                    await signInWithCustomToken(auth, authToken).catch(e => {
+                        console.error("Custom token sign in failed, signing anonymously.", e);
+                        signInAnonymously(auth);
+                    });
+                } else {
+                    await signInAnonymously(auth);
+                }
+            };
+
+            initialAuth();
+            
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    console.log("Authenticated with userId:", userId);
+                    setupListeners();
+                } else {
+                    console.log("No user signed in.");
+                    // In a live environment, an anonymous user should still get a UUID from the sign-in process
+                    // but for safety, we'll keep the loading state until we get the UID.
+                }
+            });
+
+        } catch (error) {
+            console.error("Firebase Initialization Error:", error);
+            document.getElementById('tracker-container').innerHTML = '<div class="text-red-600 font-bold">Error initializing Firebase. Please check console for details.</div>';
+        }
+
+        // --- UTILITY FUNCTIONS ---
+
+        // Pre-loaded students from the user's uploaded document
+        const defaultStudents = [
+            // Class F/G
+            { name: "Geraldo A", class: "F/G" }, { name: "Guilherme A", class: "F/G" }, { name: "Mirela C", class: "F/G" },
+            { name: "Maria Luiza C", class: "F/G" }, { name: "Caio C", class: "F/G" }, { name: "Joaquim F", class: "F/G" },
+            { name: "Sophia F", class: "F/G" }, { name: "Sofia G", class: "F/G" }, { name: "Enrico L", class: "F/G" },
+            { name: "Miguel L", class: "F/G" }, { name: "Ryan L", class: "F/G" }, { name: "Gabriel M", class: "F/G" },
+            { name: "Leonardo N", class: "F/G" }, { name: "Sophia O", class: "F/G" }, { name: "Rafael P", class: "F/G" },
+            { name: "Manuela P", class: "F/G" }, { name: "Manuela R", class: "F/G" }, { name: "Rafaella R", class: "F/G" },
+            { name: "Isabela S", class: "F/G" }, { name: "Samantha S", class: "F/G" }, { name: "Sophia T", class: "F/G" },
+            { name: "Julia X", class: "F/G" }, { name: "Isabella Y", class: "F/G" },
+            // Class C
+            { name: "Valentina A", class: "C" }, { name: "Mariana A", class: "C" }, { name: "JP Berger", class: "C" },
+            { name: "Rafaela B", class: "C" }, { name: "Felipe C", class: "C" }, { name: "João C", class: "C" },
+            { name: "Matheus", class: "C" }, { name: "Lorena C", class: "C" }, { name: "Antonio D", class: "C" },
+            { name: "Lucas G", class: "C" }, { name: "Maria Antonia J", class: "C" }, { name: "Lucca K", class: "C" },
+            { name: "Anna Beatriz L", class: "C" }, { name: "Eduardo L", class: "C" }, { name: "Sarah L", class: "C" },
+            { name: "Sofia M", class: "C" }, { name: "Ana Luisa N", class: "C" }, { name: "Nina P", class: "C" },
+            { name: "Maria P A", class: "C" }, { name: "Rafael R", "class": "C" }, { name: "Julia R", class: "C" },
+            { name: "Arthur T", class: "C" }, { name: "Helena T", class: "C" }, { name: "Eduardo V", class: "C" }
+        ];
+
+        const getStudentCollection = () => collection(db, `/artifacts/${appId}/users/${userId}/students`);
+        const getIncidentCollection = () => collection(db, `/artifacts/${appId}/users/${userId}/incidents`);
+
+        const formatDate = (date) => date.toISOString().split('T')[0];
+        const today = formatDate(new Date());
+
+        // Set initial tracking date to today
+        currentTrackingDate = today;
+        document.getElementById('date-picker').value = today;
+
+        // Function to create default students if the collection is empty
+        const loadDefaultStudents = async () => {
+            if (userId === 'loading' || students.length > 0) return;
+            console.log("Loading default students...");
+
+            const studentDocs = await getDocs(getStudentCollection());
+            if (studentDocs.empty) {
+                // If no students exist, load the defaults
+                for (const student of defaultStudents) {
+                    const newDocRef = doc(getStudentCollection());
+                    await setDoc(newDocRef, { 
+                        name: student.name, 
+                        class: student.class || 'Unassigned',
+                        id: newDocRef.id,
+                        createdAt: serverTimestamp()
+                    });
+                }
+            }
+        };
+
+
+        // --- FIREBASE LISTENERS ---
+        const setupListeners = () => {
+            // 1. Listen for Student changes
+            const studentsQuery = query(getStudentCollection(), orderBy('name'));
+            onSnapshot(studentsQuery, (snapshot) => {
+                students = snapshot.docs.map(doc => doc.data());
+                renderTracker();
+                loadDefaultStudents(); // Check and load defaults only after initial fetch
+            }, (error) => {
+                console.error("Error listening to students:", error);
+            });
+
+            // 2. Listen for ALL Incident changes (filtered later by date in memory for simpler queries)
+            // Note: For large datasets, a query filtered by date range is better, but this is simpler for daily tracking.
+            const incidentsQuery = query(getIncidentCollection());
+            onSnapshot(incidentsQuery, (snapshot) => {
+                const newIncidents = {};
+                snapshot.docs.forEach(doc => {
+                    const data = doc.data();
+                    const key = `${data.studentId}-${data.category}`;
+                    // Use a map of date -> key -> doc for quick lookup
+                    if (!newIncidents[data.date]) {
+                        newIncidents[data.date] = {};
+                    }
+                    newIncidents[data.date][key] = doc;
+                });
+                incidentsByDate = newIncidents;
+                renderTracker();
+                renderReport(); // Re-render report when incidents change
+            }, (error) => {
+                console.error("Error listening to incidents:", error);
+            });
+        };
+
+        // --- BEHAVIOR CATEGORY MAPPING ---
+        const behaviorCategories = [
+            { id: 1, name: "On Time", icon: "fas fa-clock", description: "In desk when bell rings (Late)" },
+            { id: 2, name: "Materials", icon: "fas fa-pencil-ruler", description: "Missing necessary materials" },
+            { id: 3, name: "Disruption", icon: "fas fa-exclamation-triangle", description: "Disruptive / Lack of respect/engagement" },
+            { id: 4, name: "Out of Class", icon: "fas fa-door-open", description: "Out of class / Unregistered return" },
+            { id: 5, name: "Deadlines", icon: "fas fa-clipboard-check", description: "Missing deadlines on assignments" }
+        ];
+
+
+        // --- CORE TRACKING LOGIC ---
+
+        window.toggleIncident = async (studentId, categoryId) => {
+            if (userId === 'loading') {
+                console.error("Auth not ready.");
+                return;
+            }
+
+            const key = `${studentId}-${categoryId}`;
+            const dateIncidents = incidentsByDate[currentTrackingDate] || {};
+            const existingIncidentDoc = dateIncidents[key];
+
+            try {
+                if (existingIncidentDoc) {
+                    // Incident exists, delete it (undo)
+                    await deleteDoc(existingIncidentDoc.ref);
+                    console.log(`Incident deleted for ${key} on ${currentTrackingDate}`);
+                } else {
+                    // Incident does not exist, add it
+                    const newDocRef = doc(getIncidentCollection());
+                    await setDoc(newDocRef, {
+                        studentId: studentId,
+                        category: categoryId,
+                        date: currentTrackingDate,
+                        timestamp: serverTimestamp(),
+                        userId: userId,
+                    });
+                    console.log(`Incident logged for ${key} on ${currentTrackingDate}`);
+                }
+            } catch (e) {
+                console.error("Error toggling incident:", e);
+            }
+        };
+
+
+        // --- UI RENDERING ---
+
+        window.changeDate = (event) => {
+            currentTrackingDate = event.target.value;
+            renderTracker();
+            // Report view auto-updates via the onSnapshot listener if the data changes,
+            // but we'll manually call it to ensure it reflects the latest data context.
+            renderReport(); 
+        };
+
+        window.renderTracker = () => {
+            const gridContainer = document.getElementById('tracker-grid');
+            if (!gridContainer || students.length === 0) {
+                gridContainer.innerHTML = students.length === 0 ? '<div class="p-4 text-gray-500">No students found. Add students via the Manage Students button.</div>' : '';
+                return;
+            }
+
+            const dateIncidents = incidentsByDate[currentTrackingDate] || {};
+
+            let html = `
+                <!-- Grid Header -->
+                <div class="main-grid bg-gray-200 font-semibold text-gray-700 rounded-t-lg shadow-sm">
+                    <div class="p-2 border-r border-gray-300 flex items-center">Student Name</div>
+                    ${behaviorCategories.map(cat => `
+                        <div class="p-1 border-r border-gray-300 last:border-r-0 text-center text-xs sm:text-sm grid-header-icon group" title="${cat.description}">
+                            <i class="${cat.icon} text-lg mb-1 group-hover:text-red-600 transition-colors"></i>
+                            <span class="hidden sm:inline">${cat.name}</span>
+                            <span class="sm:hidden text-xs leading-none">${cat.id}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            // Grid Rows (Students)
+            students.forEach((student, index) => {
+                const isEven = index % 2 === 0;
+                const rowClass = isEven ? 'bg-white' : 'bg-gray-100';
+
+                html += `
+                    <div class="main-grid ${rowClass} border-b border-gray-200 text-sm">
+                        <div class="p-2 truncate font-medium text-gray-900">${student.name} <span class="text-xs text-gray-500">(${student.class})</span></div>
+                        ${behaviorCategories.map(cat => {
+                            const key = `${student.id}-${cat.id}`;
+                            const isLogged = !!dateIncidents[key];
+                            const cellClass = isLogged ? 'logged text-red-800' : 'text-gray-400';
+                            return `
+                                <div class="incident-cell ${cellClass}" 
+                                     onclick="toggleIncident('${student.id}', ${cat.id})"
+                                     title="${isLogged ? 'Click to UNMARK' : 'Click to MARK'} incident for ${cat.name}">
+                                    ${isLogged ? '<i class="fas fa-times-circle text-lg"></i>' : '<i class="far fa-circle text-lg opacity-50"></i>'}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            });
+
+            gridContainer.innerHTML = html;
+        };
+
+
+        // --- REPORTING LOGIC ---
+
+        // Helper to format a date to 'Month Day'
+        const formatReportDate = (dateStr) => {
+            const date = new Date(dateStr + 'T00:00:00'); // Ensure date is treated as midnight UTC for consistency
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+
+        window.renderReport = () => {
+            const reportContainer = document.getElementById('report-view');
+            const studentSelect = document.getElementById('report-student-select');
+
+            // Update student select options if they have changed
+            const currentSelectedId = studentSelect.value;
+            studentSelect.innerHTML = '<option value="">-- Select Student --</option>' + students.map(s => 
+                `<option value="${s.id}" ${s.id === currentSelectedId ? 'selected' : ''}>${s.name} (${s.class})</option>`
+            ).join('');
+            
+            const selectedStudentId = currentSelectedId;
+            if (!selectedStudentId) {
+                reportContainer.innerHTML = '<p class="text-gray-500 p-4">Select a student to view their 3-Week Incident Report.</p>';
+                return;
+            }
+
+            // Calculate 3-week range (21 days including today)
+            const todayDate = new Date();
+            todayDate.setHours(0, 0, 0, 0); 
+            const startDate = new Date(todayDate);
+            startDate.setDate(todayDate.getDate() - 20); // 21 days total (today + 20 previous days)
+            
+            let totalIncidents = 0;
+            let dailyBreakdown = {}; // { 'YYYY-MM-DD': { categoryId: count } }
+
+            // Initialize daily breakdown for the 21-day period
+            for (let i = 0; i < 21; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                const dateKey = formatDate(date);
+                dailyBreakdown[dateKey] = { total: 0 };
+                behaviorCategories.forEach(cat => dailyBreakdown[dateKey][cat.id] = 0);
+            }
+
+            // Iterate over all incidents to populate the breakdown
+            Object.keys(incidentsByDate).forEach(dateKey => {
+                if (dailyBreakdown[dateKey]) {
+                    Object.values(incidentsByDate[dateKey]).forEach(doc => {
+                        const data = doc.data();
+                        if (data.studentId === selectedStudentId) {
+                            dailyBreakdown[dateKey][data.category]++;
+                            dailyBreakdown[dateKey].total++;
+                            totalIncidents++;
+                        }
+                    });
+                }
+            });
+
+            const student = students.find(s => s.id === selectedStudentId);
+
+            let reportHTML = `
+                <div class="p-4 bg-white rounded-lg shadow-inner mt-4">
+                    <h4 class="text-xl font-bold text-red-700 mb-4">3-Week Incident Report for ${student.name}</h4>
+                    <p class="text-lg font-semibold mb-2">Total Incidents (Last 21 Days): <span class="text-2xl text-red-600">${totalIncidents}</span></p>
+                    <p class="text-sm text-gray-500 mb-4">Tracking period: ${formatReportDate(formatDate(startDate))} - ${formatReportDate(today)}</p>
+
+                    <h5 class="font-bold text-gray-700 mb-2">Daily Breakdown:</h5>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-500 border-collapse">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                <tr>
+                                    <th scope="col" class="px-2 py-2 sticky left-0 bg-gray-100 z-10">Date</th>
+                                    ${behaviorCategories.map(cat => `<th scope="col" class="px-2 py-2 text-center" title="${cat.description}">${cat.name.split(' ')[0]}</th>`).join('')}
+                                    <th scope="col" class="px-2 py-2 text-center font-extrabold text-red-700">TOTAL</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${Object.keys(dailyBreakdown).sort().map(dateKey => {
+                                    const dailyData = dailyBreakdown[dateKey];
+                                    const isToday = dateKey === today;
+                                    const rowClass = isToday ? 'bg-yellow-100 font-bold' : 'bg-white';
+
+                                    return `
+                                        <tr class="border-b ${rowClass}">
+                                            <td class="px-2 py-1 sticky left-0 ${rowClass} font-medium text-gray-900 whitespace-nowrap z-10">${formatReportDate(dateKey)}</td>
+                                            ${behaviorCategories.map(cat => `
+                                                <td class="px-2 py-1 text-center">
+                                                    ${dailyData[cat.id] > 0 ? `<span class="bg-red-200 text-red-800 rounded-full px-2 py-0.5">${dailyData[cat.id]}</span>` : '-'}
+                                                </td>
+                                            `).join('')}
+                                            <td class="px-2 py-1 text-center font-extrabold text-red-600">
+                                                ${dailyData.total > 0 ? dailyData.total : '-'}
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+
+            reportContainer.innerHTML = reportHTML;
+        };
+
+
+        // --- MODAL & STUDENT MANAGEMENT LOGIC ---
+
+        window.openModal = (modalId) => {
+            const modal = document.getElementById(modalId);
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+            if (modalId === 'manage-students-modal') {
+                renderStudentManagementList();
+            }
+        };
+
+        window.closeModal = (modalId) => {
+            const modal = document.getElementById(modalId);
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        };
+
+        window.addStudent = async () => {
+            const nameInput = document.getElementById('new-student-name');
+            const classInput = document.getElementById('new-student-class');
+            const name = nameInput.value.trim();
+            const className = classInput.value.trim() || 'Unassigned';
+
+            if (!name) {
+                alert("Student name is required.");
+                return;
+            }
+            if (userId === 'loading') {
+                alert("Authentication not ready. Please wait.");
+                return;
+            }
+
+            try {
+                const newDocRef = doc(getStudentCollection());
+                await setDoc(newDocRef, {
+                    id: newDocRef.id,
+                    name: name,
+                    class: className,
+                    createdAt: serverTimestamp()
+                });
+                nameInput.value = ''; // Clear input
+                classInput.value = '';
+            } catch (e) {
+                console.error("Error adding student:", e);
+                alert("Failed to add student.");
+            }
+        };
+
+        window.deleteStudent = async (studentId, studentName) => {
+            if (!confirm(`Are you sure you want to permanently delete ${studentName} and ALL associated incident data?`)) {
+                return;
+            }
+
+            try {
+                // 1. Delete Student Document
+                await deleteDoc(doc(getStudentCollection(), studentId));
+
+                // 2. Delete ALL Incidents for this student (this requires fetching all relevant incidents)
+                const q = query(getIncidentCollection(), where("studentId", "==", studentId));
+                const snapshot = await getDocs(q);
+                
+                // Note: Firestore doesn't have batch delete, so we delete one by one.
+                snapshot.forEach(async (incidentDoc) => {
+                    await deleteDoc(incidentDoc.ref);
+                });
+
+                console.log(`Student ${studentName} and all incidents deleted.`);
+                renderStudentManagementList();
+            } catch (e) {
+                console.error("Error deleting student or incidents:", e);
+                alert("Failed to delete student and/or incidents.");
+            }
+        };
+
+        window.renderStudentManagementList = () => {
+            const listContainer = document.getElementById('student-list-container');
+            listContainer.innerHTML = students.map(s => `
+                <div class="flex items-center justify-between p-2 border-b last:border-b-0">
+                    <span class="font-medium">${s.name} <span class="text-xs text-gray-500">(${s.class})</span></span>
+                    <button onclick="deleteStudent('${s.id}', '${s.name}')" class="text-red-500 hover:text-red-700 transition-colors p-1 rounded-full bg-red-100">
+                        <i class="fas fa-trash-alt text-sm"></i>
+                    </button>
+                </div>
+            `).join('');
+        };
+
+
+        // --- Initialization on load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup the date picker max date to today
+            document.getElementById('date-picker').max = today;
+            // Initial render call (data will update once Firebase listeners fire)
+            renderTracker();
+            renderReport(); 
+        });
+
+    </script>
+
+
+    <!-- MAIN APPLICATION CONTAINER -->
+    <div class="max-w-6xl mx-auto">
+        <header class="mb-6">
+            <h1 class="text-3xl font-bold text-red-700">Daily Behavior Tracker</h1>
+            <p class="text-gray-600">Click a cell to instantly log an incident for the selected date. This data is saved in real-time.</p>
+        </header>
+
+        <!-- Tracking Date & Actions -->
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 p-4 bg-white shadow-md rounded-xl">
+            <div class="flex items-center mb-4 sm:mb-0">
+                <label for="date-picker" class="font-semibold text-gray-700 mr-3">Tracking Date:</label>
+                <input type="date" id="date-picker" onchange="changeDate(event)" 
+                       class="p-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150">
+            </div>
+            
+            <button onclick="openModal('manage-students-modal')"
+                    class="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition duration-150 shadow-lg hover:shadow-xl">
+                <i class="fas fa-users-cog mr-2"></i> Manage Students
+            </button>
+        </div>
+
+        <!-- TRACKING GRID -->
+        <div id="tracker-container" class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div id="tracker-grid">
+                <!-- Content generated by renderTracker() -->
+                <div class="p-4 text-center text-gray-500">Loading students and data...</div>
+            </div>
+        </div>
+
+        <!-- REPORTING SECTION -->
+        <div class="mt-10 p-6 bg-red-50 rounded-xl shadow-xl">
+            <h2 class="text-2xl font-bold text-red-700 mb-4 border-b pb-2">3-Week Reporting View</h2>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center mb-4">
+                <label for="report-student-select" class="font-semibold text-gray-700 mr-3">Select Student for Report:</label>
+                <select id="report-student-select" onchange="renderReport()"
+                        class="mt-1 sm:mt-0 p-2 border border-gray-300 rounded-lg w-full sm:w-auto focus:ring-red-500 focus:border-red-500 transition duration-150">
+                    <option value="">-- Select Student --</option>
+                    <!-- Options populated by renderReport() -->
+                </select>
+            </div>
+            <div id="report-view">
+                <p class="text-gray-500 p-4">Select a student to view their 3-Week Incident Report.</p>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MANAGE STUDENTS MODAL -->
+    <div id="manage-students-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 z-50 transition-opacity">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="p-4 border-b flex justify-between items-center bg-gray-100">
+                <h3 class="text-xl font-bold text-red-700">Manage Students</h3>
+                <button onclick="closeModal('manage-students-modal')" class="text-gray-500 hover:text-gray-800">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <!-- Add New Student Section -->
+            <div class="p-4 border-b">
+                <h4 class="font-semibold mb-2">Add New Student</h4>
+                <div class="flex space-x-2">
+                    <input type="text" id="new-student-name" placeholder="Name (e.g., Alex Johnson)" class="flex-grow p-2 border rounded-lg">
+                    <input type="text" id="new-student-class" placeholder="Class (Optional)" class="w-1/4 p-2 border rounded-lg">
+                    <button onclick="addStudent()" class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+            </div>
+
+            <!-- Student List Section -->
+            <div class="p-4 max-h-80 overflow-y-auto">
+                <h4 class="font-semibold mb-2">Current Students</h4>
+                <div id="student-list-container" class="space-y-1">
+                    <!-- Student list generated by renderStudentManagementList() -->
+                    <div class="text-center text-gray-400">Loading student list...</div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t text-right">
+                 <button onclick="closeModal('manage-students-modal')" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

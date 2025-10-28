@@ -61,6 +61,7 @@
         let students = [];
         let incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-category': { docId: docId, ...incidentData } } }
         let currentTrackingDate;
+        let currentClassFilter = 'All'; // NEW: Default to showing all classes
         let isAuthReady = false;
 
         // --- FIREBASE VARIABLES ---
@@ -77,6 +78,35 @@
         const formatDate = (date) => date.toISOString().split('T')[0];
         const today = formatDate(new Date());
         currentTrackingDate = today; 
+        
+        // NEW: Get unique classes
+        const getUniqueClasses = () => {
+            const classes = students.map(s => s.class).filter(c => c); // Get all non-empty classes
+            const uniqueClasses = [...new Set(classes)]; // Get unique list
+            return ['All', ...uniqueClasses.sort()]; // Add 'All' and sort
+        };
+
+        // NEW: Function to update the class filter dropdown options
+        const updateClassFilterOptions = () => {
+            const classSelect = document.getElementById('class-filter-select');
+            if (!classSelect) return;
+            
+            const classes = getUniqueClasses();
+            
+            // Preserve selection if possible, otherwise use 'All'
+            if (!classes.includes(currentClassFilter)) {
+                currentClassFilter = 'All';
+            }
+
+            classSelect.innerHTML = classes.map(cls => 
+                `<option value="${cls}" ${cls === currentClassFilter ? 'selected' : ''}>${cls}</option>`
+            ).join('');
+
+            // Also ensure the date picker is always maxed to today
+            document.getElementById('date-picker').max = today;
+            document.getElementById('date-picker').value = currentTrackingDate;
+        };
+
 
         // --- FIREBASE INITIALIZATION & AUTH ---
         window.initializeFirebase = async () => {
@@ -139,6 +169,7 @@
                 students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
                 // Sort students alphabetically
                 students.sort((a, b) => a.name.localeCompare(b.name)); 
+                updateClassFilterOptions(); // NEW: Update the class dropdown options
                 renderTracker();
                 renderStudentManagementList();
                 renderReport(); // Update report options
@@ -224,7 +255,12 @@
         window.changeDate = (event) => {
             currentTrackingDate = event.target.value;
             renderTracker();
-            // No need to call renderReport/listenToIncidents here, as students/incidents are global and update via snapshot
+        };
+
+        // NEW: Function to handle class filter change
+        window.changeClassFilter = (event) => {
+            currentClassFilter = event.target.value;
+            renderTracker();
         };
 
         window.renderTracker = () => {
@@ -235,8 +271,14 @@
                 gridContainer.innerHTML = '<div class="p-4 text-gray-500 flex items-center justify-center"><i class="fas fa-spinner fa-spin mr-2"></i> Initializing App...</div>';
                 return;
             }
-            if (students.length === 0) {
-                gridContainer.innerHTML = '<div class="p-4 text-gray-500">No students found. Add students via the Manage Students button.</div>';
+            
+            // NEW: Filter students based on the current class selection
+            const filteredStudents = students.filter(student => 
+                currentClassFilter === 'All' || student.class === currentClassFilter
+            );
+
+            if (filteredStudents.length === 0) {
+                gridContainer.innerHTML = '<div class="p-4 text-gray-500">No students found for the selected class.</div>';
                 return;
             }
 
@@ -257,7 +299,7 @@
             `;
 
             // Grid Rows (Students)
-            students.forEach((student, index) => {
+            filteredStudents.forEach((student, index) => { // Iterate over filtered students
                 const isEven = index % 2 === 0;
                 const rowClass = isEven ? 'bg-white' : 'bg-gray-100';
 
@@ -504,10 +546,22 @@
 
         <!-- Tracking Date & Actions -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 p-4 bg-white shadow-md rounded-xl">
-            <div class="flex items-center mb-4 sm:mb-0">
-                <label for="date-picker" class="font-semibold text-gray-700 mr-3">Tracking Date:</label>
-                <input type="date" id="date-picker" onchange="changeDate(event)" 
-                       class="p-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150">
+            <div class="flex items-center space-x-6 mb-4 sm:mb-0">
+                <!-- Date Picker -->
+                <div class="flex items-center">
+                    <label for="date-picker" class="font-semibold text-gray-700 mr-3">Date:</label>
+                    <input type="date" id="date-picker" onchange="changeDate(event)" 
+                           class="p-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150">
+                </div>
+                
+                <!-- Class Filter (NEW) -->
+                <div class="flex items-center">
+                    <label for="class-filter-select" class="font-semibold text-gray-700 mr-3">Class:</label>
+                    <select id="class-filter-select" onchange="changeClassFilter(event)"
+                            class="p-2 border border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 transition duration-150">
+                        <!-- Options generated dynamically -->
+                    </select>
+                </div>
             </div>
             
             <button onclick="openModal('manage-students-modal')"

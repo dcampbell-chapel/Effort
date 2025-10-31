@@ -8,7 +8,6 @@
   <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
 
   <style>
-    /* --- STYLES (unchanged from your working version) --- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; background:#f9fafb; min-height:100vh; padding:1rem; }
     @media(min-width:640px){body{padding:2rem;}}
@@ -27,8 +26,35 @@
     .grid-header{background:#e5e7eb;font-weight:600;color:#4b5563;}
     .grid-row-cell{padding:.5rem;border-bottom:1px solid #e5e7eb;}
     .grid-row-name{font-weight:500;color:#111827;}
-    .incident-cell{cursor:pointer;text-align:center;padding:.5rem;color:#9ca3af;}
-    .incident-cell.logged{background:#fca5a5;color:#991b1b;font-weight:600;}
+    .bg-odd { background-color: #ffffff; }
+    .bg-even { background-color: #f9fafb; }
+
+    /* 🔴 Improved incident cell design */
+    .incident-cell {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.75rem;
+      font-size: 1.5rem;
+      color: #9ca3af;
+      transition: all 0.15s ease-in-out;
+      border-left: 1px solid #e5e7eb;
+      border-right: 1px solid #e5e7eb;
+    }
+    .incident-cell:hover {
+      background-color: #fee2e2;
+      color: #b91c1c;
+    }
+    .incident-cell.logged {
+      background-color: #fecaca;
+      color: #991b1b;
+      font-weight: 700;
+    }
+    .incident-cell.logged:hover {
+      background-color: #fca5a5;
+    }
+
     .report-section{margin-top:2rem;padding:1rem;background:#fef2f2;border-radius:.75rem;box-shadow:0 4px 10px rgba(0,0,0,0.1);}
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:all .3s;z-index:10;}
     .modal-overlay.visible{visibility:visible;opacity:1;}
@@ -196,7 +222,13 @@
             <div class="grid-row-cell grid-row-name">${s.name} <span>(${s.class})</span></div>
             ${behaviorCategories.map(c=>{
               const key=`${s.id}-${c.id}`, logged=!!incs[key];
-              return `<div class="incident-cell ${logged?'logged':''}" onclick="toggleIncident('${s.id}',${c.id})">${logged?'❌':'○'}</div>`;
+              return `
+                <div class="incident-cell ${logged ? 'logged' : ''}" 
+                     onclick="toggleIncident('${s.id}', ${c.id})"
+                     title="${logged ? 'Click to clear' : 'Click to log'} ${c.name}">
+                  ${logged ? '<i class="fas fa-times-circle"></i>' : '<i class="far fa-circle"></i>'}
+                </div>
+              `;
             }).join('')}
           </div>`).join('')}
       `;

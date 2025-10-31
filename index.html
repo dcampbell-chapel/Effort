@@ -1,416 +1,113 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Behavior Tracker</title>
-    <!-- REMOVED Tailwind CDN script to eliminate production warning -->
-    
-    <!-- Font Awesome for Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
-    
-    <style>
-        /* BASE STYLES & FONT */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif;
-            background-color: #f9fafb; /* bg-gray-50 */
-            min-height: 100vh;
-            padding: 1rem; /* p-4 */
-        }
-        @media (min-width: 640px) { /* sm:p-8 */
-            body { padding: 2rem; }
-        }
-        
-        /* LAYOUT & CONTAINERS */
-        .container {
-            max-width: 1152px; /* max-w-6xl */
-            margin-left: auto;
-            margin-right: auto;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Behavior Tracker (Shared Edition)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="icon" type="image/x-icon" href="data:image/x-icon;,">
 
-        /* HEADER & TYPOGRAPHY */
-        .header-section { margin-bottom: 1.5rem; /* mb-6 */ }
-        .h1-title { 
-            font-size: 1.875rem; /* text-3xl */
-            font-weight: 700; /* font-bold */
-            color: #b91c1c; /* text-red-700 */
-        }
-        .text-lead { color: #4b5563; /* text-gray-600 */ }
-        .text-meta { font-size: 0.75rem; color: #9ca3af; /* text-xs text-gray-400 */ }
-
-        /* ACTION BAR & CONTROLS */
-        .action-bar {
-            display: flex;
-            flex-direction: column; /* flex-col */
-            justify-content: space-between;
-            align-items: flex-start; /* items-start */
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            background-color: white;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); /* shadow-md */
-            border-radius: 0.75rem; /* rounded-xl */
-        }
-        @media (min-width: 640px) { /* sm:flex-row, sm:items-center */
-            .action-bar {
-                flex-direction: row;
-                align-items: center;
-            }
-        }
-
-        .action-group {
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem; /* mb-4 */
-            gap: 1.5rem; /* space-x-6 */
-        }
-        @media (min-width: 640px) {
-            .action-group {
-                margin-bottom: 0; /* sm:mb-0 */
-            }
-        }
-
-        /* INPUTS & SELECTS */
-        .form-control {
-            padding: 0.5rem; /* p-2 */
-            border: 1px solid #d1d5db; /* border border-gray-300 */
-            border-radius: 0.5rem; /* rounded-lg */
-            transition: all 0.15s;
-        }
-        .form-control:focus {
-            outline: none;
-            border-color: #ef4444; /* focus:border-red-500 */
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.5); /* focus:ring-red-500 equivalent */
-        }
-        .label { font-weight: 600; color: #4b5563; margin-right: 0.75rem; /* mr-3 */ }
-        
-        /* PRIMARY BUTTON */
-        .btn-primary {
-            background-color: #dc2626; /* bg-red-600 */
-            color: white;
-            padding: 0.5rem 1rem; /* px-4 py-2 */
-            border-radius: 0.5rem; /* rounded-lg */
-            font-weight: 600;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* shadow-lg */
-            transition: all 0.15s;
-        }
-        .btn-primary:hover {
-            background-color: #b91c1c; /* hover:bg-red-700 */
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.18), 0 8px 10px -6px rgba(0, 0, 0, 0.18); /* hover:shadow-xl */
-        }
-        
-        /* GRID STYLES */
-        .tracker-wrapper {
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); /* shadow-lg */
-            overflow: hidden;
-        }
-        
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr repeat(5, minmax(60px, 0.5fr));
-        }
-        @media (max-width: 640px) {
-            .main-grid {
-                grid-template-columns: 1fr repeat(5, 50px);
-            }
-        }
-        
-        .grid-header {
-            background-color: #e5e7eb; /* bg-gray-200 */
-            font-weight: 600; /* font-semibold */
-            color: #4b5563; /* text-gray-700 */
-            border-top-left-radius: 0.75rem; /* rounded-t-lg */
-            border-top-right-radius: 0.75rem;
-            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* shadow-sm */
-        }
-
-        .grid-header-cell {
-            padding: 0.5rem; /* p-2 */
-            border-right: 1px solid #d1d5db; /* border-r border-gray-300 */
-            display: flex;
-            align-items: center;
-        }
-        .grid-header-cell:last-child { border-right: none; }
-        
-        .grid-header-icon {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            cursor: default;
-            user-select: none;
-            padding: 4px;
-            text-align: center;
-            font-size: 0.875rem; /* text-sm */
-            transition: color 0.15s;
-        }
-        .grid-header-icon .fas, .grid-header-icon .far {
-            font-size: 1.125rem; /* text-lg */
-            margin-bottom: 0.25rem; /* mb-1 */
-        }
-        .grid-header-icon:hover .fas, .grid-header-icon:hover .far {
-            color: #dc2626; /* group-hover:text-red-600 */
-        }
-        .grid-header-icon span {
-            font-size: 0.75rem; /* text-xs */
-            line-height: 1.25; /* leading-none */
-        }
-        .grid-header-icon span:first-of-type { display: none; } /* hidden sm:inline */
-        @media (min-width: 640px) {
-            .grid-header-icon span:first-of-type { display: inline; }
-            .grid-header-icon span:last-of-type { display: none; } /* sm:hidden */
-        }
-
-        /* GRID ROWS (STUDENTS) */
-        .grid-row-cell {
-            padding: 0.5rem;
-            font-size: 0.875rem; /* text-sm */
-            border-bottom: 1px solid #e5e7eb; /* border-b border-gray-200 */
-            white-space: nowrap;
-        }
-        .grid-row-name {
-            font-weight: 500; /* font-medium */
-            color: #111827; /* text-gray-900 */
-            overflow: hidden;
-            text-overflow: ellipsis; /* truncate */
-        }
-        .grid-row-name span { font-size: 0.75rem; color: #6b7280; } /* text-xs text-gray-500 */
-        .bg-odd { background-color: white; }
-        .bg-even { background-color: #f3f4f6; } /* bg-gray-100 */
-
-        .incident-cell {
-            cursor: pointer;
-            transition: all 0.15s ease-in-out;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: #9ca3af; /* text-gray-400 */
-        }
-        .incident-cell:hover {
-            background-color: #e5e7eb; /* Light gray on hover */
-        }
-        .logged {
-            background-color: #fca5a5; /* Red-300 */
-            color: #991b1b; /* Red-800 */
-            font-weight: 600;
-        }
-        .logged:hover {
-            background-color: #f87171; /* Slightly darker red on hover */
-        }
-
-        /* REPORT SECTION */
-        .report-section {
-            margin-top: 2.5rem; /* mt-10 */
-            padding: 1.5rem; /* p-6 */
-            background-color: #fef2f2; /* bg-red-50 */
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); /* shadow-xl */
-        }
-        .h2-report {
-            font-size: 1.5rem; /* text-2xl */
-            font-weight: 700;
-            color: #b91c1c;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid #fecaca; /* border-b pb-2 */
-            padding-bottom: 0.5rem;
-        }
-        .report-content {
-            padding: 1rem;
-            background-color: white;
-            border-radius: 0.5rem;
-            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06); /* shadow-inner */
-            margin-top: 1rem;
-        }
-        .report-table-wrapper { overflow-x: auto; }
-        .report-table { 
-            width: 100%;
-            font-size: 0.875rem;
-            text-align: left;
-            border-collapse: collapse;
-            color: #6b7280;
-        }
-        .report-table th, .report-table td { padding: 0.5rem 0.5rem; }
-        .report-table thead { 
-            font-size: 0.75rem; 
-            color: #4b5563; 
-            text-transform: uppercase; 
-            background-color: #f3f4f6;
-        }
-        .report-table td { border-bottom: 1px solid #e5e7eb; }
-        .report-table tbody tr:last-child td { border-bottom: none; }
-        
-        .sticky-col { 
-            position: sticky; 
-            left: 0; 
-            z-index: 10; 
-            font-weight: 500;
-            color: #111827;
-        }
-        .bg-today { background-color: #fef3c7; font-weight: 700; } /* bg-yellow-100 font-bold */
-        .bg-today.sticky-col { background-color: #fef3c7; }
-
-        .total-cell { font-weight: 800; color: #dc2626; } /* font-extrabold text-red-600 */
-        .total-header { font-weight: 800; color: #b91c1c; } /* font-extrabold text-red-700 */
-
-        .incident-count {
-            background-color: #fecaca; /* bg-red-200 */
-            color: #991b1b; /* text-red-800 */
-            border-radius: 9999px; /* rounded-full */
-            padding: 0.125rem 0.5rem; /* px-2 py-0.5 */
-            font-size: 0.75rem;
-        }
-        
-        /* MODAL STYLES */
-        .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(17, 24, 39, 0.8); /* bg-gray-900 bg-opacity-75 */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            z-index: 50;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-        }
-        .modal-overlay.visible {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal-content {
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* shadow-2xl */
-            width: 100%;
-            max-width: 32rem; /* max-w-lg */
-            overflow: hidden;
-            transform: scale(0.95);
-            transition: transform 0.3s;
-        }
-        .modal-overlay.visible .modal-content {
-            transform: scale(1);
-        }
-
-        .modal-header {
-            padding: 1rem;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f3f4f6; /* bg-gray-100 */
-        }
-        .modal-body-section { padding: 1rem; }
-        .modal-footer {
-            padding: 1rem;
-            border-top: 1px solid #e5e7eb;
-            text-align: right;
-        }
-        
-        .btn-secondary {
-            background-color: #e5e7eb; /* bg-gray-200 */
-            color: #374151; /* text-gray-700 */
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            transition: background-color 0.15s;
-        }
-        .btn-secondary:hover { background-color: #d1d5db; /* hover:bg-gray-300 */ }
-        
-        .input-group { display: flex; gap: 0.5rem; /* space-x-2 */ }
-        .input-group input:first-child { flex-grow: 1; }
-        .input-group input:nth-child(2) { width: 25%; } /* w-1/4 */
-
-        .student-list-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.5rem;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .student-list-item:last-child { border-bottom: none; }
-
-        .btn-delete {
-            color: #ef4444; /* text-red-500 */
-            background-color: #fef2f2; /* bg-red-100 */
-            padding: 0.25rem;
-            border-radius: 9999px;
-            transition: color 0.15s;
-        }
-        .btn-delete:hover { color: #b91c1c; /* hover:text-red-700 */ }
-
-    </style>
+  <style>
+    /* --- STYLES (unchanged from your working version) --- */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background:#f9fafb; min-height:100vh; padding:1rem; }
+    @media(min-width:640px){body{padding:2rem;}}
+    .container{max-width:1152px;margin:auto;}
+    .h1-title{font-size:1.875rem;font-weight:700;color:#b91c1c;}
+    .action-bar{display:flex;flex-direction:column;align-items:flex-start;margin-bottom:1.5rem;padding:1rem;background:#fff;border-radius:.75rem;box-shadow:0 4px 6px rgba(0,0,0,0.1);}
+    @media(min-width:640px){.action-bar{flex-direction:row;align-items:center;justify-content:space-between;}}
+    .action-group{display:flex;align-items:center;gap:1.5rem;margin-bottom:1rem;}
+    @media(min-width:640px){.action-group{margin-bottom:0;}}
+    .form-control{padding:.5rem;border:1px solid #d1d5db;border-radius:.5rem;}
+    .btn-primary{background:#dc2626;color:white;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;cursor:pointer;}
+    .btn-primary:hover{background:#b91c1c;}
+    .tracker-wrapper{background:white;border-radius:.75rem;box-shadow:0 4px 10px rgba(0,0,0,0.1);}
+    .main-grid{display:grid;grid-template-columns:1fr repeat(5,minmax(60px,0.5fr));}
+    @media(max-width:640px){.main-grid{grid-template-columns:1fr repeat(5,50px);}}
+    .grid-header{background:#e5e7eb;font-weight:600;color:#4b5563;}
+    .grid-row-cell{padding:.5rem;border-bottom:1px solid #e5e7eb;}
+    .grid-row-name{font-weight:500;color:#111827;}
+    .incident-cell{cursor:pointer;text-align:center;padding:.5rem;color:#9ca3af;}
+    .incident-cell.logged{background:#fca5a5;color:#991b1b;font-weight:600;}
+    .report-section{margin-top:2rem;padding:1rem;background:#fef2f2;border-radius:.75rem;box-shadow:0 4px 10px rgba(0,0,0,0.1);}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:all .3s;z-index:10;}
+    .modal-overlay.visible{visibility:visible;opacity:1;}
+    .modal-content{background:white;border-radius:.75rem;max-width:30rem;width:100%;overflow:hidden;}
+    .modal-header{padding:1rem;background:#f3f4f6;display:flex;justify-content:space-between;align-items:center;}
+    .modal-body-section{padding:1rem;}
+    .student-list-item{display:flex;justify-content:space-between;align-items:center;padding:.5rem;border-bottom:1px solid #e5e7eb;}
+    .btn-delete{color:#ef4444;background:#fef2f2;border:none;border-radius:9999px;padding:.25rem;}
+  </style>
 </head>
+
 <body>
+  <div class="container">
+    <header class="header-section">
+      <h1 class="h1-title">Daily Behavior Tracker</h1>
+      <p style="color:#4b5563;">Shared version — all devices see and edit the same data in real time.</p>
+    </header>
 
-    <script type="module">
-        // --- FIREBASE IMPORTS ---
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, deleteDoc, onSnapshot, collection, query, where, getDocs, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    <div class="action-bar">
+      <div class="action-group">
+        <div>
+          <label>Date:</label>
+          <input type="date" id="date-picker" class="form-control" onchange="changeDate(event)">
+        </div>
+        <div>
+          <label>Class:</label>
+          <select id="class-filter-select" class="form-control" onchange="changeClassFilter(event)"></select>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="openModal('manage-students-modal')"><i class="fas fa-users-cog"></i> Manage Students</button>
+    </div>
 
-        // --- GLOBAL VARIABLES ---
-        let students = [];
-        let incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-category': { docId: docId, ...incidentData } } }
-        let currentTrackingDate;
-        let currentClassFilter = 'All'; 
-        let isAuthReady = false;
+    <div class="tracker-wrapper">
+      <div id="tracker-grid" class="grid-row-cell text-gray-500" style="padding:1rem;">
+        <i class="fas fa-spinner fa-spin"></i> Loading shared data...
+      </div>
+    </div>
 
-        // --- FIREBASE VARIABLES ---
-        let db;
-        let auth;
-        let userId = 'loading';
-        const appId = "effort-51e3c";
-        console.log("✅ Using appId:", appId);
+    <div class="report-section">
+      <h2 class="h1-title" style="font-size:1.5rem;">3-Week Reporting View</h2>
+      <div>
+        <label>Select Student:</label>
+        <select id="report-student-select" class="form-control" onchange="renderReport()">
+          <option value="">-- Select Student --</option>
+        </select>
+      </div>
+      <div id="report-view" style="margin-top:1rem;color:#6b7280;">Select a student to view their report.</div>
+    </div>
+  </div>
 
-        
-        // Collection path builders
-        const STUDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/students`;
-        const INCIDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/incidents`;
+  <!-- MANAGE STUDENTS MODAL -->
+  <div id="manage-students-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="h1-title" style="font-size:1.25rem;">Manage Students</h3>
+        <button onclick="closeModal('manage-students-modal')"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="modal-body-section">
+        <h4>Add New Student</h4>
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
+          <input type="text" id="new-student-name" placeholder="Name" class="form-control">
+          <input type="text" id="new-student-class" placeholder="Class" class="form-control">
+          <button class="btn-primary" onclick="addStudent()"><i class="fas fa-plus"></i></button>
+        </div>
+        <h4>Current Students</h4>
+        <div id="student-list-container" style="max-height:15rem;overflow-y:auto;"></div>
+      </div>
+      <div class="modal-body-section" style="text-align:right;">
+        <button class="btn-primary" onclick="closeModal('manage-students-modal')">Done</button>
+      </div>
+    </div>
+  </div>
 
-        // --- UTILITY FUNCTIONS ---
-        const formatDate = (date) => date.toISOString().split('T')[0];
-        const today = formatDate(new Date());
-        currentTrackingDate = today; 
-        
-        // Get unique classes
-        const getUniqueClasses = () => {
-            const classes = students.map(s => s.class).filter(c => c); // Get all non-empty classes
-            const uniqueClasses = [...new Set(classes)]; // Get unique list
-            return ['All', ...uniqueClasses.sort()]; // Add 'All' and sort
-        };
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, query, where, getDocs } 
+      from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Function to update the class filter dropdown options
-        const updateClassFilterOptions = () => {
-            const classSelect = document.getElementById('class-filter-select');
-            if (!classSelect) return;
-            
-            const classes = getUniqueClasses();
-            
-            // Preserve selection if possible, otherwise use 'All'
-            if (!classes.includes(currentClassFilter)) {
-                currentClassFilter = 'All';
-            }
-
-            classSelect.innerHTML = classes.map(cls => 
-                `<option value="${cls}" ${cls === currentClassFilter ? 'selected' : ''}>${cls}</option>`
-            ).join('');
-
-            // Also ensure the date picker is always maxed to today
-            document.getElementById('date-picker').max = today;
-            document.getElementById('date-picker').value = currentTrackingDate;
-        };
-
-
-// --- FIREBASE INITIALIZATION & AUTH ---
-window.initializeFirebase = async () => {
-  try {
-    // ✅ Direct Firebase configuration (from your Firebase console)
+    // 🔥 Shared version: everyone uses the same data path
     const firebaseConfig = {
       apiKey: "AIzaSyDlsGbo2qdX9HkLbwPYIyvDGDEsWrIboXY",
       authDomain: "effort-51e3c.firebaseapp.com",
@@ -420,549 +117,101 @@ window.initializeFirebase = async () => {
       appId: "1:182442171:web:b64125daa653c82855319e",
       measurementId: "G-YQ70LMPHX8"
     };
-
-    // Initialize Firebase with your project configuration
     const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
+    const db = getFirestore(app);
+    const appId = "effort-51e3c";
+    const userId = "c6fpAFHWGwZGmCFImvcaQxR4zfs1";
+    console.log("🔥 Shared mode active — all devices share the same data.");
 
-    // (Optional) Analytics support
-    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js")
-      .then(({ getAnalytics }) => getAnalytics(app))
-      .catch(() => console.warn("Analytics module not loaded (optional)"));
+    const STUDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/students`;
+    const INCIDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/incidents`;
 
-    // Sign-in logic
-    await new Promise(resolve => {
-      const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        unsubscribe();
-        if (user) {
-          userId = user.uid;
-        } else {
-          // Use custom token if available, otherwise sign in anonymously
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            try {
-              const userCredential = await signInWithCustomToken(auth, __initial_auth_token);
-              userId = userCredential.user.uid;
-            } catch (error) {
-              console.error("Custom token sign-in failed, signing in anonymously:", error);
-              const userCredential = await signInAnonymously(auth);
-              userId = userCredential.user.uid;
-            }
-          } else {
-            const userCredential = await signInAnonymously(auth);
-            userId = userCredential.user.uid;
-          }
-        }
-        isAuthReady = true;
-        document.getElementById("user-id-display").textContent =
-          `User ID: ${userId.substring(0, 8)}... (App: effort-51e3c)`;
-        resolve();
+    let students = [];
+    let incidentsByDate = {};
+    let currentTrackingDate = new Date().toISOString().split('T')[0];
+    let currentClassFilter = 'All';
+
+    const behaviorCategories = [
+      { id:1, name:"On Time", icon:"fas fa-clock" },
+      { id:2, name:"Materials", icon:"fas fa-pencil-ruler" },
+      { id:3, name:"Disruption", icon:"fas fa-exclamation-triangle" },
+      { id:4, name:"Out of Class", icon:"fas fa-door-open" },
+      { id:5, name:"Deadlines", icon:"fas fa-clipboard-check" }
+    ];
+
+    const listenToStudents = () => {
+      onSnapshot(collection(db, STUDENTS_COLLECTION()), snap => {
+        students = snap.docs.map(d => ({ id:d.id, ...d.data() })).sort((a,b)=>a.name.localeCompare(b.name));
+        updateClassFilterOptions();
+        renderTracker();
+        renderStudentManagementList();
+        renderReport();
       });
-    });
-
-    // Start data listeners once authenticated
-    listenToStudents();
-    listenToIncidents();
-
-  } catch (error) {
-    console.error("Firebase initialization failed:", error);
-    document.getElementById("tracker-grid").innerHTML =
-      '<div class="grid-row-cell text-red-700 font-bold">Error initializing Firebase. Check console for details.</div>';
-  }
-};
-
-        // --- FIREBASE REAL-TIME LISTENERS (Replaces loadStudents/loadIncidents) ---
-        
-        const listenToStudents = () => {
-             if (!isAuthReady) return;
-            
-            const studentsRef = collection(db, STUDENTS_COLLECTION());
-
-            // Listen for real-time updates
-            onSnapshot(studentsRef, (snapshot) => {
-                students = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                // Sort students alphabetically
-                students.sort((a, b) => a.name.localeCompare(b.name)); 
-                updateClassFilterOptions(); // Update the class dropdown options
-                renderTracker();
-                renderStudentManagementList();
-                renderReport(); // Update report options
-            }, (error) => {
-                console.error("Error listening to students:", error);
-            });
-        };
-
-        const listenToIncidents = () => {
-            if (!isAuthReady) return;
-
-            const incidentsRef = collection(db, INCIDENTS_COLLECTION());
-            
-            // Listen for real-time updates
-            onSnapshot(incidentsRef, (snapshot) => {
-                const newIncidentsByDate = {};
-                snapshot.docs.forEach(doc => {
-                    const data = doc.data();
-                    const docId = doc.id;
-                    const key = `${data.studentId}-${data.category}`;
-                    
-                    if (!newIncidentsByDate[data.date]) {
-                        newIncidentsByDate[data.date] = {};
-                    }
-                    // Store the document ID for easy deletion
-                    newIncidentsByDate[data.date][key] = { ...data, docId }; 
-                });
-
-                incidentsByDate = newIncidentsByDate;
-                renderTracker(); // Update tracker grid
-                renderReport(); // Update report data
-            }, (error) => {
-                console.error("Error listening to incidents:", error);
-            });
-        };
-
-
-        // --- BEHAVIOR CATEGORY MAPPING ---
-        const behaviorCategories = [
-            { id: 1, name: "On Time", icon: "fas fa-clock", description: "In desk when bell rings (Late)" },
-            { id: 2, name: "Materials", icon: "fas fa-pencil-ruler", description: "Missing necessary materials" },
-            { id: 3, name: "Disruption", icon: "fas fa-exclamation-triangle", description: "Disruptive / Lack of respect/engagement" },
-            { id: 4, name: "Out of Class", icon: "fas fa-door-open", description: "Out of class / Unregistered return" },
-            { id: 5, name: "Deadlines", icon: "fas fa-clipboard-check", description: "Missing deadlines on assignments" }
-        ];
-
-
-        // --- CORE TRACKING LOGIC (Firestore CRUD) ---
-
-        window.toggleIncident = async (studentDocId, categoryId) => {
-            if (!isAuthReady) return console.warn("Firebase not ready.");
-
-            const key = `${studentDocId}-${categoryId}`;
-            const dateIncidents = incidentsByDate[currentTrackingDate] || {};
-            const existingIncident = dateIncidents[key];
-
-            try {
-                if (existingIncident) {
-                    // Incident exists, delete it (undo)
-                    const docRef = doc(db, INCIDENTS_COLLECTION(), existingIncident.docId);
-                    await deleteDoc(docRef);
-                    console.log(`Incident deleted for ${key} on ${currentTrackingDate}`);
-                } else {
-                    // Incident does not exist, add it
-                    const newIncident = {
-                        studentId: studentDocId, // Use the student document ID
-                        category: categoryId,
-                        date: currentTrackingDate,
-                        timestamp: Date.now(),
-                    };
-                    await addDoc(collection(db, INCIDENTS_COLLECTION()), newIncident);
-                    console.log(`Incident logged for ${key} on ${currentTrackingDate}`);
-                }
-                // UI update will be handled by the real-time listener (onSnapshot)
-            } catch (e) {
-                console.error("Error toggling incident:", e);
-            }
-        };
-
-
-        // --- UI RENDERING ---
-
-        window.changeDate = (event) => {
-            currentTrackingDate = event.target.value;
-            renderTracker();
-        };
-
-        // Function to handle class filter change
-        window.changeClassFilter = (event) => {
-            currentClassFilter = event.target.value;
-            renderTracker();
-        };
-
-        window.renderTracker = () => {
-            const gridContainer = document.getElementById('tracker-grid');
-            if (!gridContainer) return;
-
-            if (userId === 'loading') {
-                gridContainer.innerHTML = '<div class="grid-row-cell text-gray-500" style="display:flex; align-items:center; justify-content:center; padding:1rem;"><i class="fas fa-spinner fa-spin" style="margin-right:0.5rem;"></i> Initializing App...</div>';
-                return;
-            }
-            
-            // Filter students based on the current class selection
-            const filteredStudents = students.filter(student => 
-                currentClassFilter === 'All' || student.class === currentClassFilter
-            );
-
-            if (filteredStudents.length === 0) {
-                gridContainer.innerHTML = '<div class="grid-row-cell text-gray-500" style="padding:1rem;">No students found for the selected class.</div>';
-                return;
-            }
-
-            const dateIncidents = incidentsByDate[currentTrackingDate] || {};
-
-            let html = `
-                <!-- Grid Header -->
-                <div class="main-grid grid-header">
-                    <div class="grid-header-cell">Student Name</div>
-                    ${behaviorCategories.map(cat => `
-                        <div class="grid-header-cell grid-header-icon" title="${cat.description}">
-                            <i class="${cat.icon}"></i>
-                            <span class="desktop-name">${cat.name}</span>
-                            <span class="mobile-id">${cat.id}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-
-            // Grid Rows (Students)
-            filteredStudents.forEach((student, index) => { // Iterate over filtered students
-                const isEven = index % 2 === 0;
-                const rowClass = isEven ? 'bg-odd' : 'bg-even';
-
-                html += `
-                    <div class="main-grid ${rowClass}">
-                        <div class="grid-row-cell grid-row-name">${student.name} <span>(${student.class})</span></div>
-                        ${behaviorCategories.map(cat => {
-                            // Student.id here is the Firestore document ID
-                            const key = `${student.id}-${cat.id}`; 
-                            const isLogged = !!dateIncidents[key];
-                            const cellClass = isLogged ? 'logged' : '';
-                            return `
-                                <div class="incident-cell ${cellClass}" 
-                                     onclick="toggleIncident('${student.id}', ${cat.id})"
-                                     title="${isLogged ? 'Click to UNMARK' : 'Click to MARK'} incident for ${cat.name}">
-                                    ${isLogged ? '<i class="fas fa-times-circle text-lg"></i>' : '<i class="far fa-circle text-lg opacity-50"></i>'}
-                                </div>
-                            `;
-                        }).join('')}
-                    </div>
-                `;
-            });
-
-            gridContainer.innerHTML = html;
-            
-            // Fix for desktop/mobile visibility of header icons after rendering
-            const styleElement = document.createElement('style');
-            styleElement.textContent = `
-                @media (min-width: 640px) {
-                    .grid-header-icon .mobile-id { display: none; }
-                    .grid-header-icon .desktop-name { display: inline; }
-                }
-                @media (max-width: 639px) {
-                    .grid-header-icon .mobile-id { display: inline; }
-                    .grid-header-icon .desktop-name { display: none; }
-                }
-            `;
-            gridContainer.appendChild(styleElement);
-        };
-
-
-        // --- REPORTING LOGIC ---
-
-        // Helper to format a date to 'Month Day'
-        const formatReportDate = (dateStr) => {
-            const date = new Date(dateStr + 'T00:00:00'); 
-            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        }
-
-
-        window.renderReport = () => {
-            const reportContainer = document.getElementById('report-view');
-            const studentSelect = document.getElementById('report-student-select');
-
-            // Update student select options 
-            const currentSelectedId = studentSelect.value;
-            studentSelect.innerHTML = '<option value="">-- Select Student --</option>' + students.map(s => 
-                `<option value="${s.id}" ${s.id === currentSelectedId ? 'selected' : ''}>${s.name} (${s.class})</option>`
-            ).join('');
-            
-            const selectedStudentId = currentSelectedId;
-            if (!selectedStudentId) {
-                reportContainer.innerHTML = '<p class="grid-row-cell text-gray-500" style="padding:1rem;">Select a student to view their 3-Week Incident Report.</p>';
-                return;
-            }
-
-            // Calculate 3-week range (21 days including today)
-            const todayDate = new Date();
-            todayDate.setHours(0, 0, 0, 0); 
-            const startDate = new Date(todayDate);
-            startDate.setDate(todayDate.getDate() - 20); // 21 days total (today + 20 previous days)
-            
-            let totalIncidents = 0;
-            let dailyBreakdown = {}; // { 'YYYY-MM-DD': { categoryId: count } }
-
-            // Initialize daily breakdown for the 21-day period
-            for (let i = 0; i < 21; i++) {
-                const date = new Date(startDate);
-                date.setDate(startDate.getDate() + i);
-                const dateKey = formatDate(date);
-                dailyBreakdown[dateKey] = { total: 0 };
-                behaviorCategories.forEach(cat => dailyBreakdown[dateKey][cat.id] = 0);
-            }
-
-            // Iterate over all incidents to populate the breakdown
-            Object.keys(incidentsByDate).forEach(dateKey => {
-                if (dailyBreakdown[dateKey]) {
-                    Object.values(incidentsByDate[dateKey]).forEach(incident => {
-                        // Incident data now contains the docId and studentId (which is the student's doc ID)
-                        if (incident.studentId === selectedStudentId) { 
-                            dailyBreakdown[dateKey][incident.category]++;
-                            dailyBreakdown[dateKey].total++;
-                            totalIncidents++;
-                        }
-                    });
-                }
-            });
-
-            const student = students.find(s => s.id === selectedStudentId);
-
-            let reportHTML = `
-                <div class="report-content">
-                    <h4 class="h1-title" style="font-size: 1.25rem; margin-bottom: 1rem;">3-Week Incident Report for ${student.name}</h4>
-                    <p style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem;">Total Incidents (Last 21 Days): <span style="font-size: 1.5rem; color: #dc2626;">${totalIncidents}</span></p>
-                    <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 1rem;">Tracking period: ${formatReportDate(formatDate(startDate))} - ${formatReportDate(today)}</p>
-
-                    <h5 style="font-weight: 700; color: #4b5563; margin-bottom: 0.5rem;">Daily Breakdown:</h5>
-                    <div class="report-table-wrapper">
-                        <table class="report-table">
-                            <thead>
-                                <tr>
-                                    <th scope="col" class="sticky-col" style="background-color: #f3f4f6;">Date</th>
-                                    ${behaviorCategories.map(cat => `<th scope="col" style="text-align: center;" title="${cat.description}">${cat.name.split(' ')[0]}</th>`).join('')}
-                                    <th scope="col" class="total-header" style="text-align: center;">TOTAL</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${Object.keys(dailyBreakdown).sort().map(dateKey => {
-                                    const dailyData = dailyBreakdown[dateKey];
-                                    const isToday = dateKey === today;
-                                    const rowClass = isToday ? 'bg-today' : 'bg-odd';
-
-                                    return `
-                                        <tr class="${rowClass}">
-                                            <td class="sticky-col ${rowClass}">${formatReportDate(dateKey)}</td>
-                                            ${behaviorCategories.map(cat => `
-                                                <td style="text-align: center;">
-                                                    ${dailyData[cat.id] > 0 ? `<span class="incident-count">${dailyData[cat.id]}</span>` : '-'}
-                                                </td>
-                                            `).join('')}
-                                            <td class="total-cell" style="text-align: center;">
-                                                ${dailyData.total > 0 ? dailyData.total : '-'}
-                                            </td>
-                                        </tr>
-                                    `;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            `;
-
-            reportContainer.innerHTML = reportHTML;
-        };
-
-
-        // --- MODAL & STUDENT MANAGEMENT LOGIC (Firestore CRUD) ---
-
-        window.openModal = (modalId) => {
-            const modal = document.getElementById(modalId);
-            modal.classList.add('visible');
-            document.body.style.overflow = 'hidden';
-            if (modalId === 'manage-students-modal') {
-                renderStudentManagementList();
-            }
-        };
-
-        window.closeModal = (modalId) => {
-            const modal = document.getElementById(modalId);
-            modal.classList.remove('visible');
-            document.body.style.overflow = '';
-        };
-
-        window.addStudent = async () => {
-            if (!isAuthReady) return console.warn("Firebase not ready.");
-
-            const nameInput = document.getElementById('new-student-name');
-            const classInput = document.getElementById('new-student-class');
-            const name = nameInput.value.trim();
-            const className = classInput.value.trim() || 'Unassigned';
-
-            if (!name) {
-                console.error("Student name is required.");
-                return;
-            }
-
-            try {
-                // Add new student document to Firestore
-                const newStudent = {
-                    name: name,
-                    class: className,
-                    createdAt: Date.now()
-                };
-                await addDoc(collection(db, STUDENTS_COLLECTION()), newStudent);
-                
-                nameInput.value = ''; 
-                classInput.value = '';
-                
-                // UI update handled by listenToStudents (onSnapshot)
-            } catch (e) {
-                console.error("Error adding student:", e);
-            }
-        };
-
-        window.deleteStudent = async (studentDocId, studentName) => {
-            if (!isAuthReady) return console.warn("Firebase not ready.");
-            console.log(`Deleting ${studentName} (ID: ${studentDocId}).`);
-
-            try {
-                // 1. Delete ALL Incidents for this student
-                const incidentsRef = collection(db, INCIDENTS_COLLECTION());
-                const q = query(incidentsRef, where("studentId", "==", studentDocId));
-                const incidentSnapshot = await getDocs(q);
-
-                const deletePromises = [];
-                incidentSnapshot.docs.forEach(doc => {
-                    deletePromises.push(deleteDoc(doc.ref));
-                });
-                await Promise.all(deletePromises);
-                
-                console.log(`${deletePromises.length} incidents deleted.`);
-
-                // 2. Delete Student
-                const studentDocRef = doc(db, STUDENTS_COLLECTION(), studentDocId);
-                await deleteDoc(studentDocRef);
-
-                console.log(`Student ${studentName} deleted.`);
-                
-                // UI updates handled by real-time listeners (onSnapshot)
-            } catch (e) {
-                console.error("Error deleting student or incidents:", e);
-            }
-        };
-
-        window.renderStudentManagementList = () => {
-            const listContainer = document.getElementById('student-list-container');
-            listContainer.innerHTML = students.map(s => `
-                <div class="student-list-item">
-                    <span class="font-medium">${s.name} <span style="font-size: 0.75rem; color: #6b7280;">(${s.class})</span></span>
-                    <button onclick="deleteStudent('${s.id}', '${s.name}')" class="btn-delete">
-                        <i class="fas fa-trash-alt" style="font-size: 0.875rem;"></i>
-                    </button>
-                </div>
-            `).join('');
-        };
-
-
-        // --- Initialization on load ---
-        document.addEventListener('DOMContentLoaded', () => {
-            // Setup the date picker max date to today
-            document.getElementById('date-picker').max = today;
-            document.getElementById('date-picker').value = today;
-            
-            // Start Firebase initialization and listening
-            initializeFirebase();
+    };
+    const listenToIncidents = () => {
+      onSnapshot(collection(db, INCIDENTS_COLLECTION()), snap => {
+        const newInc = {};
+        snap.docs.forEach(docSnap => {
+          const d = docSnap.data(); const docId = docSnap.id;
+          if (!newInc[d.date]) newInc[d.date] = {};
+          newInc[d.date][`${d.studentId}-${d.category}`] = { ...d, docId };
         });
+        incidentsByDate = newInc;
+        renderTracker();
+        renderReport();
+      });
+    };
+    listenToStudents(); listenToIncidents();
 
-    </script>
+    const getUniqueClasses = () => ['All', ...[...new Set(students.map(s=>s.class).filter(Boolean))].sort()];
+    const updateClassFilterOptions = () => {
+      const sel = document.getElementById('class-filter-select');
+      sel.innerHTML = getUniqueClasses().map(c=>`<option value="${c}" ${c===currentClassFilter?'selected':''}>${c}</option>`).join('');
+      const dp = document.getElementById('date-picker');
+      dp.max = new Date().toISOString().split('T')[0];
+      dp.value = currentTrackingDate;
+    };
 
+    window.changeClassFilter = e => { currentClassFilter=e.target.value; renderTracker(); };
+    window.changeDate = e => { currentTrackingDate=e.target.value; renderTracker(); };
 
-    <!-- MAIN APPLICATION CONTAINER -->
-    <div class="container">
-        <header class="header-section">
-            <h1 class="h1-title">Daily Behavior Tracker</h1>
-            <p class="text-lead">Click a cell to instantly log an incident for the selected date. **Data is synced using Firebase Firestore.**</p>
-            <p id="user-id-display" class="text-meta" style="margin-top: 0.25rem;">User ID: Loading...</p>
-        </header>
+    window.toggleIncident = async (sid,cid) => {
+      const key = `${sid}-${cid}`, incs = incidentsByDate[currentTrackingDate]||{}, ex = incs[key];
+      if (ex) await deleteDoc(doc(db, INCIDENTS_COLLECTION(), ex.docId));
+      else await addDoc(collection(db, INCIDENTS_COLLECTION()), {studentId:sid,category:cid,date:currentTrackingDate,timestamp:Date.now()});
+    };
 
-        <!-- Tracking Date & Actions -->
-        <div class="action-bar">
-            <div class="action-group">
-                <!-- Date Picker -->
-                <div style="display: flex; align-items: center;">
-                    <label for="date-picker" class="label">Date:</label>
-                    <input type="date" id="date-picker" onchange="changeDate(event)" 
-                           class="form-control">
-                </div>
-                
-                <!-- Class Filter -->
-                <div style="display: flex; align-items: center;">
-                    <label for="class-filter-select" class="label">Class:</label>
-                    <select id="class-filter-select" onchange="changeClassFilter(event)"
-                            class="form-control">
-                        <!-- Options generated dynamically -->
-                    </select>
-                </div>
-            </div>
-            
-            <button onclick="openModal('manage-students-modal')"
-                    class="btn-primary" style="margin-top: 0.5rem; /* for small screens */">
-                <i class="fas fa-users-cog" style="margin-right: 0.5rem;"></i> Manage Students
-            </button>
+    window.renderTracker = () => {
+      const grid=document.getElementById('tracker-grid');
+      const filtered=students.filter(s=>currentClassFilter==='All'||s.class===currentClassFilter);
+      if(!filtered.length){grid.innerHTML='<div style="padding:1rem;">No students found.</div>';return;}
+      const incs=incidentsByDate[currentTrackingDate]||{};
+      grid.innerHTML=`
+        <div class="main-grid grid-header">
+          <div class="grid-header-cell">Student Name</div>
+          ${behaviorCategories.map(c=>`<div class="grid-header-cell"><i class="${c.icon}"></i> ${c.name}</div>`).join('')}
         </div>
+        ${filtered.map((s,i)=>`
+          <div class="main-grid ${i%2?'bg-even':'bg-odd'}">
+            <div class="grid-row-cell grid-row-name">${s.name} <span>(${s.class})</span></div>
+            ${behaviorCategories.map(c=>{
+              const key=`${s.id}-${c.id}`, logged=!!incs[key];
+              return `<div class="incident-cell ${logged?'logged':''}" onclick="toggleIncident('${s.id}',${c.id})">${logged?'❌':'○'}</div>`;
+            }).join('')}
+          </div>`).join('')}
+      `;
+    };
 
-        <!-- TRACKING GRID -->
-        <div id="tracker-container" class="tracker-wrapper">
-            <div id="tracker-grid">
-                <!-- Content generated by renderTracker() -->
-                <div class="grid-row-cell text-gray-500" style="display:flex; align-items:center; justify-content:center; padding:1rem;"><i class="fas fa-spinner fa-spin" style="margin-right:0.5rem;"></i> Waiting for Firebase connection...</div>
-            </div>
-        </div>
+    window.addStudent=async()=>{const n=document.getElementById('new-student-name').value.trim();const c=document.getElementById('new-student-class').value.trim()||'Unassigned';if(!n)return;await addDoc(collection(db,STUDENTS_COLLECTION()),{name:n,class:c,createdAt:Date.now()});document.getElementById('new-student-name').value='';document.getElementById('new-student-class').value='';};
+    window.deleteStudent=async(id)=>{const q=query(collection(db,INCIDENTS_COLLECTION()),where("studentId","==",id));const s=await getDocs(q);await Promise.all(s.docs.map(d=>deleteDoc(d.ref)));await deleteDoc(doc(db,STUDENTS_COLLECTION(),id));};
+    window.renderStudentManagementList=()=>{document.getElementById('student-list-container').innerHTML=students.map(s=>`<div class="student-list-item"><span>${s.name} (${s.class})</span><button class="btn-delete" onclick="deleteStudent('${s.id}')"><i class="fas fa-trash-alt"></i></button></div>`).join('');};
 
-        <!-- REPORTING SECTION -->
-        <div class="report-section">
-            <h2 class="h2-report">3-Week Reporting View</h2>
-            <div style="display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 1rem;">
-                <label for="report-student-select" class="label">Select Student for Report:</label>
-                <select id="report-student-select" onchange="renderReport()"
-                        class="form-control" style="width: 100%; margin-top: 0.25rem;">
-                    <option value="">-- Select Student --</option>
-                    <!-- Options populated by renderReport() -->
-                </select>
-            </div>
-            <div id="report-view">
-                <p class="grid-row-cell text-gray-500" style="padding:1rem;">Select a student to view their 3-Week Incident Report.</p>
-            </div>
-        </div>
-    </div>
+    window.openModal=id=>{document.getElementById(id).classList.add('visible');};
+    window.closeModal=id=>{document.getElementById(id).classList.remove('visible');};
 
+    window.renderReport=()=>{const s=document.getElementById('report-student-select');s.innerHTML='<option value="">-- Select Student --</option>'+students.map(st=>`<option value="${st.id}">${st.name} (${st.class})</option>`).join('');};
 
-    <!-- MANAGE STUDENTS MODAL -->
-    <div id="manage-students-modal" class="modal-overlay">
-        <div class="modal-content">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <h3 class="h1-title" style="font-size: 1.25rem;">Manage Students</h3>
-                <button onclick="closeModal('manage-students-modal')" style="color: #6b7280;">
-                    <i class="fas fa-times" style="font-size: 1.5rem;"></i>
-                </button>
-            </div>
-            
-            <!-- Add New Student Section -->
-            <div class="modal-body-section" style="border-bottom: 1px solid #e5e7eb;">
-                <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Add New Student</h4>
-                <div class="input-group">
-                    <input type="text" id="new-student-name" placeholder="Name (e.g., Alex Johnson)" class="form-control">
-                    <input type="text" id="new-student-class" placeholder="Class (Optional)" class="form-control">
-                    <button onclick="addStudent()" class="btn-primary" style="padding: 0.5rem 0.75rem;">
-                        <i class="fas fa-plus"></i> Add
-                    </button>
-                </div>
-            </div>
-
-            <!-- Student List Section -->
-            <div class="modal-body-section" style="max-height: 20rem; overflow-y: auto;">
-                <h4 style="font-weight: 600; margin-bottom: 0.5rem;">Current Students</h4>
-                <div id="student-list-container" style="display: flex; flex-direction: column; gap: 0.25rem;">
-                    <!-- Student list generated by renderStudentManagementList() -->
-                    <div style="text-align: center; color: #9ca3af;">Loading student list...</div>
-                </div>
-            </div>
-
-            <div class="modal-footer">
-                 <button onclick="closeModal('manage-students-modal')" class="btn-secondary">
-                    Done
-                </button>
-            </div>
-        </div>
-    </div>
-
+    document.addEventListener('DOMContentLoaded',()=>{const d=document.getElementById('date-picker');d.max=currentTrackingDate;d.value=currentTrackingDate;});
+  </script>
 </body>
 </html>

@@ -11,9 +11,7 @@
       background-color: #f9fafb;
       padding: 1rem;
     }
-    @media (min-width: 640px) {
-      body { padding: 2rem; }
-    }
+    @media (min-width: 640px) { body { padding: 2rem; } }
     .container {
       max-width: 1152px;
       margin: auto;
@@ -148,17 +146,20 @@
     </div>
   </div>
 
-  <div id="manage-students-modal" class="modal-overlay" style="display:none;"></div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    let db, auth, userId = 'loading';
-    let students = [], incidentsByDate = {}, currentTrackingDate, currentClassFilter = 'All', isAuthReady = false;
+    // === Make variables global ===
+    window.students = [];
+    window.incidentsByDate = {};
+    window.currentTrackingDate = null;
+    window.currentClassFilter = 'All';
+    window.isAuthReady = false;
+    window.userId = 'loading';
+
     const appId = "effort-51e3c";
-
     const STUDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/students`;
     const INCIDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/incidents`;
 
@@ -184,38 +185,38 @@
         appId: "1:182442171:web:b64125daa653c82855319e"
       };
       const app = initializeApp(firebaseConfig);
-      db = getFirestore(app);
-      auth = getAuth(app);
+      const db = getFirestore(app);
+      const auth = getAuth(app);
       await new Promise(resolve => {
         const unsub = onAuthStateChanged(auth, async user => {
           unsub();
-          if (user) userId = user.uid;
+          if (user) window.userId = user.uid;
           else {
             const uc = await signInAnonymously(auth);
-            userId = uc.user.uid;
+            window.userId = uc.user.uid;
           }
-          isAuthReady = true;
+          window.isAuthReady = true;
           document.getElementById("user-id-display").textContent =
             `User ID: ${userId.substring(0,8)}...`;
-          listenToStudents();
-          listenToIncidents();
+          listenToStudents(db);
+          listenToIncidents(db);
           resolve();
         });
       });
     };
 
-    const listenToStudents = () => {
+    function listenToStudents(db) {
       if (!isAuthReady) return;
       onSnapshot(collection(db, STUDENTS_COLLECTION()), snap => {
-        students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        window.students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         students.sort((a,b) => a.name.localeCompare(b.name));
         updateClassFilterOptions();
         renderTracker();
         renderReport();
       });
-    };
+    }
 
-    const listenToIncidents = () => {
+    function listenToIncidents(db) {
       if (!isAuthReady) return;
       onSnapshot(collection(db, INCIDENTS_COLLECTION()), snap => {
         const newMap = {};
@@ -225,27 +226,30 @@
           if (!newMap[data.date]) newMap[data.date] = {};
           newMap[data.date][key] = { ...data, docId: docSnap.id };
         });
-        incidentsByDate = newMap;
+        window.incidentsByDate = newMap;
         renderTracker();
         renderReport();
       });
-    };
+    }
 
-    const getUniqueClasses = () => ['All', ...new Set(students.map(s => s.class).filter(Boolean)).values()];
+    function getUniqueClasses() {
+      return ['All', ...new Set(students.map(s => s.class).filter(Boolean))];
+    }
 
-    const updateClassFilterOptions = () => {
+    function updateClassFilterOptions() {
       const select = document.getElementById('class-filter-select');
       const classes = getUniqueClasses();
       select.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
       select.value = currentClassFilter;
       document.getElementById('date-picker').max = today;
       document.getElementById('date-picker').value = currentTrackingDate;
-    };
+    }
 
     window.changeDate = e => { currentTrackingDate = e.target.value; renderTracker(); };
     window.changeClassFilter = e => { currentClassFilter = e.target.value; renderTracker(); };
 
     window.toggleIncident = async (sid, cid) => {
+      const db = getFirestore();
       const key = `${sid}-${cid}`;
       const dayData = incidentsByDate[currentTrackingDate] || {};
       const existing = dayData[key];
@@ -321,6 +325,11 @@
       document.getElementById('date-picker').value = today;
       initializeFirebase();
     });
+
+    // Ensure globals are available for inline events
+    window.updateClassFilterOptions = updateClassFilterOptions;
+    window.listenToStudents = listenToStudents;
+    window.listenToIncidents = listenToIncidents;
   </script>
 </body>
 </html>

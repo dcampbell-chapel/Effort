@@ -1,353 +1,513 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Student Behavior Tracker</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Student Behavior Tracker — Charts</title>
+
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f9fafb;
-      padding: 1rem;
+    /* Basic layout & theme (kept consistent with prior design) */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f9fafb; margin:0; padding:1rem; }
+    .container { max-width:1152px; margin:0 auto; }
+    .h1 { font-size:1.6rem; color:#b91c1c; font-weight:700; margin-bottom:0.25rem; }
+    .muted { color:#6b7280; margin-bottom:1rem; }
+    .action-bar { display:flex; justify-content:space-between; gap:1rem; align-items:center; background:#fff; padding:1rem; border-radius:0.75rem; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:1rem; flex-wrap:wrap; }
+    .form-control { padding:0.5rem; border:1px solid #e5e7eb; border-radius:0.5rem; }
+    .btn { background:#dc2626; color:#fff; border:none; padding:0.5rem 0.9rem; border-radius:0.5rem; cursor:pointer; font-weight:600; }
+    .btn.secondary { background:#6b7280; }
+    .grid-panel { background:#fff; padding:1rem; border-radius:0.75rem; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:1rem; }
+    .tracker-grid { margin-bottom:1rem; }
+    .chart-panel { background:#fff; padding:1rem; border-radius:0.75rem; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    label { font-weight:600; margin-right:0.5rem; }
+    .inline { display:inline-flex; align-items:center; gap:0.5rem; }
+    .controls-row { display:flex; gap:0.5rem; align-items:center; }
+    .small { font-size:0.9rem; color:#6b7280; }
+
+    /* Grid row visuals (kept from previous improvements) */
+    .main-grid { display:grid; grid-template-columns: 1fr repeat(5, minmax(70px, 0.5fr)); }
+    .grid-header { background:#e5e7eb; font-weight:600; color:#374151; display:contents; }
+    .grid-header-cell { padding:0.5rem; border-right:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; }
+    .grid-row { display:contents; }
+    .grid-row-cell { padding:0.5rem; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; }
+    .bg-odd { background:#fff; }
+    .bg-even { background:#f8fafc; }
+    .incident-cell { display:flex; align-items:center; justify-content:center; height:46px; cursor:pointer; }
+    .incident-cell.logged { background:#fecaca; color:#7f1d1d; font-weight:700; }
+
+    /* Chart canvases */
+    .chart-wrap { width:100%; max-width:100%; height:360px; }
+    .chart-actions { margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center; }
+
+    /* Responsive */
+    @media (max-width:720px) {
+      .main-grid { grid-template-columns: 1fr repeat(5, 50px); }
+      .chart-wrap { height:320px; }
     }
-    @media (min-width: 640px) { body { padding: 2rem; } }
-    .container {
-      max-width: 1152px;
-      margin: auto;
-    }
-    .h1-title {
-      font-size: 1.875rem;
-      font-weight: 700;
-      color: #b91c1c;
-    }
-    .action-bar {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 1rem;
-      background: white;
-      padding: 1rem;
-      border-radius: 0.75rem;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      margin-bottom: 1.5rem;
-    }
-    .btn-primary {
-      background-color: #dc2626;
-      color: white;
-      padding: 0.5rem 1rem;
-      border-radius: 0.5rem;
-      font-weight: 600;
-      transition: all 0.15s;
-    }
-    .btn-primary:hover { background-color: #b91c1c; }
-    .tracker-wrapper {
-      background-color: white;
-      border-radius: 0.75rem;
-      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
-      overflow: hidden;
-      margin-bottom: 2rem;
-    }
-    .main-grid {
-      display: grid;
-      grid-template-columns: 1fr repeat(5, minmax(70px, 0.5fr));
-    }
-    .grid-header {
-      background-color: #e5e7eb;
-      font-weight: 600;
-      color: #4b5563;
-    }
-    .grid-header-cell {
-      padding: 0.5rem;
-      border-right: 1px solid #d1d5db;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .grid-row-cell {
-      padding: 0.5rem;
-      border-bottom: 1px solid #e5e7eb;
-      font-size: 0.875rem;
-    }
-    .grid-row-name {
-      font-weight: 500;
-      color: #111827;
-    }
-    .bg-odd { background: #ffffff; }
-    .bg-even { background: #f3f4f6; }
-    .incident-cell {
-      cursor: pointer;
-      height: 50px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      transition: all 0.15s;
-    }
-    .incident-cell:hover { background-color: #e5e7eb; }
-    .logged {
-      background-color: #fca5a5;
-      color: #991b1b;
-      font-weight: 700;
-    }
-    .logged:hover { background-color: #f87171; }
-    .report-section {
-      background: #fef2f2;
-      padding: 1rem;
-      border-radius: 0.75rem;
-      box-shadow: 0 10px 15px rgba(0,0,0,0.1);
-    }
-    table.report-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      font-size: 0.875rem;
-    }
-    .report-table th, .report-table td {
-      border: 1px solid #e5e7eb;
-      padding: 0.5rem;
-      text-align: center;
-    }
-    .report-table th { background: #f3f4f6; color: #374151; }
-    .bg-today { background-color: #fef3c7 !important; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1 class="h1-title">Daily Behavior Tracker</h1>
-    <p style="color:#4b5563;">Click a cell to log an incident. Data syncs automatically with Firebase.</p>
-    <p id="user-id-display" style="color:#9ca3af;font-size:0.75rem;">User ID: Loading...</p>
+    <h1 class="h1">Student Behavior Tracker — Charts</h1>
+    <p class="muted">Line chart: daily category trends for a selected student (last 21 days). Donut: class-level summary for the same period.</p>
 
     <div class="action-bar">
+      <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+        <div class="inline">
+          <label for="date-picker">Date:</label>
+          <input id="date-picker" class="form-control" type="date" />
+        </div>
+
+        <div class="inline">
+          <label for="class-filter-select">Class:</label>
+          <select id="class-filter-select" class="form-control"></select>
+        </div>
+
+        <div class="inline">
+          <label for="report-student-select">Student:</label>
+          <select id="report-student-select" class="form-control"></select>
+        </div>
+
+        <div class="inline small" id="user-id-display">User: loading...</div>
+      </div>
+
+      <div class="controls-row">
+        <button id="btn-toggle-chart" class="btn">View Donut (Class Summary)</button>
+        <button id="btn-refresh" class="btn secondary" title="Refresh data">Refresh</button>
+      </div>
+    </div>
+
+    <div class="grid-panel">
+      <div id="tracker-grid" class="tracker-grid">Loading tracker...</div>
+    </div>
+
+    <div class="chart-panel">
       <div>
-        <label>Date: <input type="date" id="date-picker" /></label>
-        <label style="margin-left:1rem;">Class:
-          <select id="class-filter-select"></select>
-        </label>
+        <canvas id="lineChart" class="chart-wrap"></canvas>
+        <canvas id="donutChart" class="chart-wrap" style="display:none;"></canvas>
       </div>
-      <button class="btn-primary">
-        <i class="fas fa-users-cog"></i> Manage Students
-      </button>
-    </div>
-
-    <div class="tracker-wrapper">
-      <div id="tracker-grid" style="padding:1rem;text-align:center;color:#6b7280;">
-        <i class="fas fa-spinner fa-spin"></i> Loading tracker...
-      </div>
-    </div>
-
-    <div class="report-section">
-      <h2 class="h1-title" style="font-size:1.5rem;">3-Week Reporting View</h2>
-      <label for="report-student-select">Select Student:</label>
-      <select id="report-student-select" onchange="renderReport()" class="form-control" style="margin-bottom:1rem;width:100%;"></select>
-      <div id="report-view" style="background:#fff;padding:1rem;border-radius:0.5rem;">
-        Select a student to view their 3-week report.
+      <div class="chart-actions small">
+        <div id="chart-legend"></div>
+        <div style="margin-left:auto;color:#6b7280;">Showing last <strong>21 days</strong></div>
       </div>
     </div>
   </div>
 
+  <!-- Firebase + Chart-enabled client script -->
   <script type="module">
+    // Imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, query, where, getDocs, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // === Make variables global ===
+    // ---------- Globals exposed for inline handlers and debugging ----------
     window.students = [];
-    window.incidentsByDate = {};
+    window.incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-category': {...} } }
+    window.userId = 'loading';
     window.currentTrackingDate = null;
     window.currentClassFilter = 'All';
-    window.isAuthReady = false;
-    window.userId = 'loading';
-
     const appId = "effort-51e3c";
+
+    // Firestore path helpers
     const STUDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/students`;
     const INCIDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/incidents`;
 
-    const formatDate = d => d.toISOString().split('T')[0];
-    const today = formatDate(new Date());
-    currentTrackingDate = today;
-
+    // Category config (same as app)
     const behaviorCategories = [
-      { id: 1, name: "On Time" },
-      { id: 2, name: "Materials" },
-      { id: 3, name: "Disruption" },
-      { id: 4, name: "Out of Class" },
-      { id: 5, name: "Deadlines" }
+      { id:1, name:"On Time", color:"#10b981" },       // green
+      { id:2, name:"Materials", color:"#3b82f6" },     // blue
+      { id:3, name:"Disruption", color:"#ef4444" },    // red
+      { id:4, name:"Out of Class", color:"#f59e0b" },  // amber
+      { id:5, name:"Deadlines", color:"#8b5cf6" }      // purple
     ];
 
-    window.initializeFirebase = async () => {
+    // Chart.js chart instances
+    let lineChart = null;
+    let donutChart = null;
+    let showDonut = false;
+
+    // Helpers
+    const formatDate = d => d.toISOString().split('T')[0];
+    const today = formatDate(new Date());
+    window.currentTrackingDate = today;
+
+    // Initialize Firebase and listeners
+    async function initializeFirebaseAndListeners() {
       const firebaseConfig = {
         apiKey: "AIzaSyDlsGbo2qdX9HkLbwPYIyvDGDEsWrIboXY",
         authDomain: "effort-51e3c.firebaseapp.com",
         projectId: "effort-51e3c",
         storageBucket: "effort-51e3c.firebasestorage.app",
         messagingSenderId: "182442171",
-        appId: "1:182442171:web:b64125daa653c82855319e"
+        appId: "1:182442171:web:b64125daa653c82855319e",
+        measurementId: "G-YQ70LMPHX8"
       };
+
       const app = initializeApp(firebaseConfig);
       const db = getFirestore(app);
       const auth = getAuth(app);
+
+      // sign in anonymously so we have a stable path to read/write
       await new Promise(resolve => {
         const unsub = onAuthStateChanged(auth, async user => {
           unsub();
-          if (user) window.userId = user.uid;
-          else {
-            const uc = await signInAnonymously(auth);
-            window.userId = uc.user.uid;
+          if (user) {
+            window.userId = user.uid;
+          } else {
+            const cred = await signInAnonymously(auth);
+            window.userId = cred.user.uid;
           }
-          window.isAuthReady = true;
-          document.getElementById("user-id-display").textContent =
-            `User ID: ${userId.substring(0,8)}...`;
+
+          document.getElementById('user-id-display').textContent = `User: ${window.userId.substring(0,8)}...`;
+          // Start listeners
           listenToStudents(db);
           listenToIncidents(db);
           resolve();
         });
       });
-    };
+    }
 
+    // Listen to students
     function listenToStudents(db) {
-      if (!isAuthReady) return;
-      onSnapshot(collection(db, STUDENTS_COLLECTION()), snap => {
-        window.students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        students.sort((a,b) => a.name.localeCompare(b.name));
+      const ref = collection(db, STUDENTS_COLLECTION());
+      onSnapshot(ref, snap => {
+        window.students = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
         updateClassFilterOptions();
-        renderTracker();
-        renderReport();
+        renderTrackerGrid();
+        // keep student dropdown and charts in sync
+        updateStudentSelect();
+        renderChartsForSelection(); // redraw charts if selection exists
+      }, err => {
+        console.error("students listen error", err);
       });
     }
 
+    // Listen to incidents
     function listenToIncidents(db) {
-      if (!isAuthReady) return;
-      onSnapshot(collection(db, INCIDENTS_COLLECTION()), snap => {
-        const newMap = {};
+      const ref = collection(db, INCIDENTS_COLLECTION());
+      onSnapshot(ref, snap => {
+        const map = {};
         snap.docs.forEach(docSnap => {
           const data = docSnap.data();
+          const date = data.date;
           const key = `${data.studentId}-${data.category}`;
-          if (!newMap[data.date]) newMap[data.date] = {};
-          newMap[data.date][key] = { ...data, docId: docSnap.id };
+          if (!map[date]) map[date] = {};
+          map[date][key] = { ...data, docId: docSnap.id };
         });
-        window.incidentsByDate = newMap;
-        renderTracker();
-        renderReport();
+        window.incidentsByDate = map;
+        renderTrackerGrid();
+        renderChartsForSelection();
+      }, err => {
+        console.error("incidents listen error", err);
       });
     }
 
-    function getUniqueClasses() {
-      return ['All', ...new Set(students.map(s => s.class).filter(Boolean))];
+    // Utility: produce array of last N dates (YYYY-MM-DD), oldest first
+    function lastNDates(n = 21) {
+      const base = new Date();
+      const arr = [];
+      for (let i = n-1; i >= 0; i--) {
+        const d = new Date(base);
+        d.setDate(base.getDate() - i);
+        arr.push(formatDate(d));
+      }
+      return arr;
     }
 
+    // --- UI: class filter and student select ---
     function updateClassFilterOptions() {
-      const select = document.getElementById('class-filter-select');
-      const classes = getUniqueClasses();
-      select.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
-      select.value = currentClassFilter;
-      document.getElementById('date-picker').max = today;
-      document.getElementById('date-picker').value = currentTrackingDate;
+      const sel = document.getElementById('class-filter-select');
+      const classes = ['All', ...[...new Set(window.students.map(s => s.class).filter(Boolean))].sort()];
+      const prev = window.currentClassFilter || 'All';
+      sel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
+      if (classes.includes(prev)) sel.value = prev;
+      else sel.value = 'All';
+      // set datePicker
+      const dp = document.getElementById('date-picker');
+      dp.max = today;
+      dp.value = window.currentTrackingDate || today;
     }
 
-    window.changeDate = e => { currentTrackingDate = e.target.value; renderTracker(); };
-    window.changeClassFilter = e => { currentClassFilter = e.target.value; renderTracker(); };
+    function updateStudentSelect() {
+      const sel = document.getElementById('report-student-select');
+      const prev = sel.value;
+      sel.innerHTML = '<option value="">-- Select Student --</option>' +
+        window.students.map(s => `<option value="${s.id}">${s.name} (${s.class||'—'})</option>`).join('');
+      // restore previous selection if still valid
+      if (prev && window.students.some(s => s.id === prev)) sel.value = prev;
+    }
 
-    window.toggleIncident = async (sid, cid) => {
+    // --- Tracker grid rendering (keeps previous style) ---
+    function renderTrackerGrid() {
+      const container = document.getElementById('tracker-grid');
+      if (!window.students.length) {
+        container.innerHTML = '<div style="padding:1rem;color:#6b7280;">No students — add some via Manage Students.</div>';
+        return;
+      }
+      const filtered = window.students.filter(s => window.currentClassFilter === 'All' || s.class === window.currentClassFilter);
+      if (!filtered.length) {
+        container.innerHTML = '<div style="padding:1rem;color:#6b7280;">No students for this class.</div>';
+        return;
+      }
+
+      const datesMap = window.incidentsByDate;
+      const htmlParts = [];
+      // header
+      htmlParts.push(`<div class="main-grid grid-header">
+        <div class="grid-header-cell">Student</div>
+        ${behaviorCategories.map(c=>`<div class="grid-header-cell">${c.name}</div>`).join('')}
+      </div>`);
+      // rows
+      filtered.forEach((s, idx) => {
+        const rowClass = (idx % 2 === 0) ? 'bg-odd' : 'bg-even';
+        const cells = behaviorCategories.map(c => {
+          const key = `${s.id}-${c.id}`;
+          const logged = !!(datesMap && datesMap[window.currentTrackingDate] && datesMap[window.currentTrackingDate][key]);
+          return `<div class="grid-row-cell incident-cell ${logged ? 'logged' : ''}" onclick="toggleIncident('${s.id}', ${c.id})">${logged ? '❌' : '○'}</div>`;
+        }).join('');
+        htmlParts.push(`<div class="main-grid ${rowClass}">
+          <div class="grid-row-cell grid-row-name">${s.name} <span style="color:#6b7280;font-size:0.8rem;">(${s.class||'—'})</span></div>
+          ${cells}
+        </div>`);
+      });
+
+      container.innerHTML = htmlParts.join('');
+    }
+
+    // --- Incident toggle exposed globally ---
+    window.toggleIncident = async (studentId, categoryId) => {
+      // add/delete incident in Firestore
       const db = getFirestore();
-      const key = `${sid}-${cid}`;
-      const dayData = incidentsByDate[currentTrackingDate] || {};
-      const existing = dayData[key];
+      const key = `${studentId}-${categoryId}`;
+      const dayMap = window.incidentsByDate[window.currentTrackingDate] || {};
+      const existing = dayMap[key];
       if (existing) {
+        // delete
         await deleteDoc(doc(db, INCIDENTS_COLLECTION(), existing.docId));
       } else {
         await addDoc(collection(db, INCIDENTS_COLLECTION()), {
-          studentId: sid, category: cid, date: currentTrackingDate, timestamp: Date.now()
+          studentId, category: categoryId, date: window.currentTrackingDate, timestamp: Date.now()
         });
       }
     };
 
-    window.renderTracker = () => {
-      const container = document.getElementById('tracker-grid');
-      if (userId === 'loading') {
-        container.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connecting...';
-        return;
-      }
-      const filtered = students.filter(s => currentClassFilter === 'All' || s.class === currentClassFilter);
-      if (!filtered.length) {
-        container.innerHTML = '<div style="padding:1rem;">No students found.</div>';
-        return;
-      }
-      const dayData = incidentsByDate[currentTrackingDate] || {};
-      let html = `
-        <div class="main-grid grid-header">
-          <div class="grid-header-cell">Student</div>
-          ${behaviorCategories.map(c=>`<div class="grid-header-cell">${c.name}</div>`).join('')}
-        </div>`;
-      filtered.forEach((s,i)=>{
-        const rowClass = i%2===0?'bg-odd':'bg-even';
-        html += `<div class="main-grid ${rowClass}">
-          <div class="grid-row-cell grid-row-name">${s.name} <span style="color:#6b7280;font-size:0.75rem;">(${s.class})</span></div>
-          ${behaviorCategories.map(c=>{
-            const key = `${s.id}-${c.id}`;
-            const logged = !!dayData[key];
-            return `<div class="incident-cell ${logged?'logged':''}" onclick="toggleIncident('${s.id}',${c.id})">${logged?'❌':'○'}</div>`;
-          }).join('')}
-        </div>`;
+    // --- Chart rendering logic ---
+
+    // Build datasets for line chart for selected student
+    function buildLineChartData(selectedStudentId) {
+      const dates = lastNDates(21);
+      // prepare data array per category
+      const datasets = behaviorCategories.map(cat => {
+        const data = dates.map(date => {
+          const incs = window.incidentsByDate[date] || {};
+          const key = `${selectedStudentId}-${cat.id}`;
+          return !!incs[key] ? 1 : 0; // each logged incident counts as 1 (if app allows multiple same category per day, adjust accordingly)
+        });
+        return {
+          label: cat.name,
+          data,
+          borderColor: cat.color,
+          backgroundColor: cat.color,
+          tension: 0.2,
+          pointRadius: 3,
+          fill: false
+        };
       });
-      container.innerHTML = html;
-    };
 
-    // ✅ Fixed renderReport function (preserves selection)
-    window.renderReport = () => {
-      const select = document.getElementById('report-student-select');
-      const view = document.getElementById('report-view');
+      return { labels: dates, datasets };
+    }
 
-      // Preserve current selection before rebuilding
-      const previousValue = select.value;
-
-      // Rebuild dropdown
-      select.innerHTML =
-        '<option value="">-- Select Student --</option>' +
-        students.map(s => `<option value="${s.id}">${s.name} (${s.class})</option>`).join('');
-
-      // Restore selection
-      if (previousValue && students.some(s => s.id === previousValue)) {
-        select.value = previousValue;
-      }
-
-      const sid = select.value;
-      if (!sid) {
-        view.textContent = 'Select a student to view their report.';
-        return;
-      }
-
-      const todayD = new Date();
-      const dates = Array.from({ length: 21 }, (_, i) => {
-        const d = new Date(todayD);
-        d.setDate(todayD.getDate() - i);
-        return d.toISOString().split('T')[0];
-      }).reverse();
-
-      let rows = '';
+    // Build totals by class for donut chart (sum of all categories in last 21 days)
+    function buildDonutData() {
+      const dates = lastNDates(21);
+      const countsByStudent = {}; // studentId -> count
       dates.forEach(date => {
-        const incs = incidentsByDate[date] || {};
-        const cells = behaviorCategories.map(c => {
-          const key = `${sid}-${c.id}`;
-          const logged = incs[key];
-          return `<td>${logged ? '✔️' : ''}</td>`;
-        }).join('');
-        const todayClass = date === today ? ' class="bg-today"' : '';
-        rows += `<tr${todayClass}><td>${date}</td>${cells}</tr>`;
+        const incs = window.incidentsByDate[date] || {};
+        Object.values(incs).forEach(inc => {
+          countsByStudent[inc.studentId] = (countsByStudent[inc.studentId] || 0) + 1;
+        });
       });
 
-      view.innerHTML = `
-        <table class="report-table">
-          <thead><tr><th>Date</th>${behaviorCategories.map(c => `<th>${c.name}</th>`).join('')}</tr></thead>
-          <tbody>${rows}</tbody>
-        </table>`;
-    };
+      // aggregate by class
+      const countsByClass = {};
+      window.students.forEach(s => {
+        const c = s.class || 'Unassigned';
+        countsByClass[c] = (countsByClass[c] || 0) + (countsByStudent[s.id] || 0);
+      });
 
-    document.addEventListener('DOMContentLoaded', ()=>{
+      return {
+        labels: Object.keys(countsByClass),
+        data: Object.values(countsByClass),
+      };
+    }
+
+    // Initialize or update line chart
+    function renderLineChart(selectedStudentId) {
+      const ctx = document.getElementById('lineChart').getContext('2d');
+      const chartData = buildLineChartData(selectedStudentId);
+
+      if (lineChart) {
+        // update datasets & labels
+        lineChart.data.labels = chartData.labels;
+        lineChart.data.datasets = chartData.datasets;
+        lineChart.update();
+        return;
+      }
+
+      lineChart = new Chart(ctx, {
+        type: 'line',
+        data: chartData,
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          stacked: false,
+          plugins: {
+            legend: { position: 'top' },
+            tooltip: {
+              callbacks: {
+                label: ctx => `${ctx.dataset.label}: ${ctx.formattedValue}`
+              }
+            }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Date' } },
+            y: { title: { display: true, text: 'Incidents' }, beginAtZero: true, ticks: { precision:0 } }
+          }
+        }
+      });
+    }
+
+    // Initialize or update donut chart
+    function renderDonutChart() {
+      const ctx = document.getElementById('donutChart').getContext('2d');
+      const donutData = buildDonutData();
+      const colors = donutData.labels.map((_, i) => {
+        // reuse category color palette or generate pastel colors
+        const palette = ["#ef4444","#3b82f6","#10b981","#f59e0b","#8b5cf6","#06b6d4","#fb7185","#f97316"];
+        return palette[i % palette.length];
+      });
+
+      if (donutChart) {
+        donutChart.data.labels = donutData.labels;
+        donutChart.data.datasets[0].data = donutData.data;
+        donutChart.data.datasets[0].backgroundColor = colors;
+        donutChart.update();
+        return;
+      }
+
+      donutChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: donutData.labels,
+          datasets: [{ data: donutData.data, backgroundColor: colors, hoverOffset: 8 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'right' }, tooltip: { enabled: true } }
+        }
+      });
+    }
+
+    // Called whenever selection changes or data updates
+    function renderChartsForSelection() {
+      const sel = document.getElementById('report-student-select');
+      const selectedId = sel.value;
+      if (!selectedId) {
+        // clear line chart (show placeholder)
+        if (lineChart) {
+          lineChart.data.labels = lastNDates(21);
+          lineChart.data.datasets = behaviorCategories.map(cat => ({ label: cat.name, data: Array(21).fill(0), borderColor: cat.color, backgroundColor: cat.color, tension:0.2 }));
+          lineChart.update();
+        }
+        // also update donut
+        if (donutChart) renderDonutChart();
+        return;
+      }
+      // show line chart and hide donut
+      if (showDonut) toggleChartView(); // ensure line chart visible by default when selection changes
+      renderLineChart(selectedId);
+    }
+
+    // Toggle between line and donut
+    function toggleChartView() {
+      showDonut = !showDonut;
+      const lineEl = document.getElementById('lineChart');
+      const donutEl = document.getElementById('donutChart');
+      const btn = document.getElementById('btn-toggle-chart');
+      if (showDonut) {
+        lineEl.style.display = 'none';
+        donutEl.style.display = 'block';
+        btn.textContent = 'View Line Chart (Student)';
+        renderDonutChart();
+      } else {
+        donutEl.style.display = 'none';
+        lineEl.style.display = 'block';
+        btn.textContent = 'View Donut (Class Summary)';
+        renderChartsForSelection();
+      }
+    }
+
+    // Hook up UI controls
+    document.getElementById('btn-toggle-chart').addEventListener('click', toggleChartView);
+    document.getElementById('btn-refresh').addEventListener('click', () => {
+      // simple re-render (listeners update automatically)
+      updateStudentSelect();
+      renderTrackerGrid();
+      renderChartsForSelection();
+      renderDonutChart();
+    });
+    document.getElementById('date-picker').addEventListener('change', (e) => {
+      window.currentTrackingDate = e.target.value;
+      renderTrackerGrid();
+    });
+    document.getElementById('class-filter-select').addEventListener('change', (e) => {
+      window.currentClassFilter = e.target.value;
+      updateStudentSelect();
+      renderTrackerGrid();
+      renderChartsForSelection();
+    });
+    document.getElementById('report-student-select').addEventListener('change', () => {
+      renderChartsForSelection();
+    });
+
+    // Expose some functions for debugging
+    window.renderChartsForSelection = renderChartsForSelection;
+    window.toggleChartView = toggleChartView;
+
+    // Initialize app
+    document.addEventListener('DOMContentLoaded', async () => {
+      // set date picker default to today
       document.getElementById('date-picker').max = today;
       document.getElementById('date-picker').value = today;
-      initializeFirebase();
+      await initializeFirebaseAndListeners();
+      // create empty chart instances (placeholders)
+      const ctxLine = document.getElementById('lineChart').getContext('2d');
+      lineChart = new Chart(ctxLine, {
+        type: 'line',
+        data: { labels: lastNDates(21), datasets: behaviorCategories.map(cat => ({ label: cat.name, data: Array(21).fill(0), borderColor: cat.color, backgroundColor: cat.color, tension:0.2 })) },
+        options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+      });
+      // donut placeholder
+      const ctxDonut = document.getElementById('donutChart').getContext('2d');
+      donutChart = new Chart(ctxDonut, { type:'doughnut', data:{ labels:[], datasets:[{ data:[], backgroundColor:[] }] }, options:{ responsive:true, maintainAspectRatio:false } });
+      // initial render
+      updateStudentSelect();
+      renderTrackerGrid();
+      renderChartsForSelection();
     });
+
+    // Small helper to get Firestore instance (used by toggleIncident)
+    import { getFirestore as _getFs, doc as _doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    function getFirestore() { return _getFs(); }
+    function doc(db, p, id) { return _doc(db, p, id); }
   </script>
 </body>
 </html>

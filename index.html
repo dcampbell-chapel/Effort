@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Student Behavior Tracker — Charts</title>
+  <title>Student Behavior Tracker — Full</title>
 
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
@@ -12,7 +12,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    /* Basic layout & theme (kept consistent with prior design) */
+    /* --- Styles (combined & consistent) --- */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
     body { font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#f9fafb; margin:0; padding:1rem; }
     .container { max-width:1152px; margin:0 auto; }
@@ -24,28 +24,33 @@
     .btn.secondary { background:#6b7280; }
     .grid-panel { background:#fff; padding:1rem; border-radius:0.75rem; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:1rem; }
     .tracker-grid { margin-bottom:1rem; }
-    .chart-panel { background:#fff; padding:1rem; border-radius:0.75rem; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    .chart-panel { background:#fff; padding:1rem; border-radius:0.75rem; box-shadow:0 6px 18px rgba(0,0,0,0.06); margin-bottom:1rem; }
     label { font-weight:600; margin-right:0.5rem; }
     .inline { display:inline-flex; align-items:center; gap:0.5rem; }
     .controls-row { display:flex; gap:0.5rem; align-items:center; }
-    .small { font-size:0.9rem; color:#6b7280; }
 
-    /* Grid row visuals (kept from previous improvements) */
+    /* Grid / tracker */
     .main-grid { display:grid; grid-template-columns: 1fr repeat(5, minmax(70px, 0.5fr)); }
     .grid-header { background:#e5e7eb; font-weight:600; color:#374151; display:contents; }
     .grid-header-cell { padding:0.5rem; border-right:1px solid #e5e7eb; display:flex; align-items:center; justify-content:center; }
     .grid-row { display:contents; }
     .grid-row-cell { padding:0.5rem; border-bottom:1px solid #f3f4f6; display:flex; align-items:center; }
+    .grid-row-name { font-weight:500; color:#111827; }
     .bg-odd { background:#fff; }
     .bg-even { background:#f8fafc; }
     .incident-cell { display:flex; align-items:center; justify-content:center; height:46px; cursor:pointer; }
     .incident-cell.logged { background:#fecaca; color:#7f1d1d; font-weight:700; }
 
-    /* Chart canvases */
-    .chart-wrap { width:100%; max-width:100%; height:360px; }
+    /* Report styles / chart */
+    .chart-wrap { width:100%; height:360px; }
     .chart-actions { margin-top:0.75rem; display:flex; gap:0.5rem; align-items:center; }
 
-    /* Responsive */
+    /* Modal */
+    .modal-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background:rgba(0,0,0,0.6); z-index:30; }
+    .modal-overlay.visible { display:flex; }
+    .modal-content { background:#fff; border-radius:0.75rem; width:100%; max-width:720px; padding:0.5rem; box-shadow:0 30px 60px rgba(0,0,0,0.25); }
+    .student-list-item { display:flex; justify-content:space-between; align-items:center; padding:0.5rem; border-bottom:1px solid #f3f4f6; }
+
     @media (max-width:720px) {
       .main-grid { grid-template-columns: 1fr repeat(5, 50px); }
       .chart-wrap { height:320px; }
@@ -54,9 +59,10 @@
 </head>
 <body>
   <div class="container">
-    <h1 class="h1">Student Behavior Tracker — Charts</h1>
-    <p class="muted">Line chart: daily category trends for a selected student (last 21 days). Donut: class-level summary for the same period.</p>
+    <h1 class="h1">Student Behavior Tracker</h1>
+    <p class="muted">Full interface + charts. Click a cell to log an incident. Data syncs with Firestore.</p>
 
+    <!-- Action bar -->
     <div class="action-bar">
       <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
         <div class="inline">
@@ -70,25 +76,28 @@
         </div>
 
         <div class="inline">
-          <label for="report-student-select">Student:</label>
-          <select id="report-student-select" class="form-control"></select>
+          <label for="student-select">Student:</label>
+          <select id="student-select" class="form-control"></select>
         </div>
 
-        <div class="inline small" id="user-id-display">User: loading...</div>
+        <div class="inline" style="margin-left:8px;color:#6b7280;" id="user-id-display">User: loading...</div>
       </div>
 
       <div class="controls-row">
+        <button id="manage-btn" class="btn"><i class="fas fa-users-cog"></i> Manage Students</button>
         <button id="btn-toggle-chart" class="btn">View Donut (Class Summary)</button>
         <button id="btn-refresh" class="btn secondary" title="Refresh data">Refresh</button>
       </div>
     </div>
 
+    <!-- Tracker grid -->
     <div class="grid-panel">
       <div id="tracker-grid" class="tracker-grid">Loading tracker...</div>
     </div>
 
+    <!-- Chart / report panel -->
     <div class="chart-panel">
-      <div>
+      <div style="display:flex;flex-direction:column;">
         <canvas id="lineChart" class="chart-wrap"></canvas>
         <canvas id="donutChart" class="chart-wrap" style="display:none;"></canvas>
       </div>
@@ -99,46 +108,63 @@
     </div>
   </div>
 
-  <!-- Firebase + Chart-enabled client script -->
+  <!-- Manage students modal -->
+  <div id="manage-students-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:0.5rem 1rem;border-bottom:1px solid #f3f4f6;">
+        <h3 style="margin:0;color:#b91c1c;">Manage Students</h3>
+        <button onclick="closeModal('manage-students-modal')" style="background:none;border:none;font-size:1.2rem;">✖</button>
+      </div>
+      <div style="padding:1rem;">
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;">
+          <input id="new-student-name" placeholder="Name" class="form-control" />
+          <input id="new-student-class" placeholder="Class" class="form-control" />
+          <button class="btn" onclick="addStudent()">Add</button>
+        </div>
+        <div id="student-list-container" style="max-height:300px;overflow:auto;"></div>
+        <div style="text-align:right;margin-top:0.75rem;">
+          <button class="btn secondary" onclick="closeModal('manage-students-modal')">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT: Firebase + App logic + Charts -->
   <script type="module">
-    // Imports
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, deleteDoc, onSnapshot, query, where, getDocs, doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // ---------- Globals exposed for inline handlers and debugging ----------
+    // --- Globals (exposed) ---
     window.students = [];
-    window.incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-category': {...} } }
+    window.incidentsByDate = {};
     window.userId = 'loading';
     window.currentTrackingDate = null;
     window.currentClassFilter = 'All';
+
     const appId = "effort-51e3c";
+    let db = null; // set in initialize
 
-    // Firestore path helpers
-    const STUDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/students`;
-    const INCIDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/incidents`;
-
-    // Category config (same as app)
+    // Behavior categories
     const behaviorCategories = [
-      { id:1, name:"On Time", color:"#10b981" },       // green
-      { id:2, name:"Materials", color:"#3b82f6" },     // blue
-      { id:3, name:"Disruption", color:"#ef4444" },    // red
-      { id:4, name:"Out of Class", color:"#f59e0b" },  // amber
-      { id:5, name:"Deadlines", color:"#8b5cf6" }      // purple
+      { id:1, name:"On Time", color:"#10b981" },
+      { id:2, name:"Materials", color:"#3b82f6" },
+      { id:3, name:"Disruption", color:"#ef4444" },
+      { id:4, name:"Out of Class", color:"#f59e0b" },
+      { id:5, name:"Deadlines", color:"#8b5cf6" }
     ];
 
-    // Chart.js chart instances
-    let lineChart = null;
-    let donutChart = null;
-    let showDonut = false;
-
-    // Helpers
+    // Utility
     const formatDate = d => d.toISOString().split('T')[0];
     const today = formatDate(new Date());
     window.currentTrackingDate = today;
 
-    // Initialize Firebase and listeners
-    async function initializeFirebaseAndListeners() {
+    // Firestore collection helpers (use global userId)
+    const STUDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/students`;
+    const INCIDENTS_COLLECTION = () => `artifacts/${appId}/users/${userId}/incidents`;
+
+    // Initialize Firebase + listeners
+    async function initializeFirebase() {
       const firebaseConfig = {
         apiKey: "AIzaSyDlsGbo2qdX9HkLbwPYIyvDGDEsWrIboXY",
         authDomain: "effort-51e3c.firebaseapp.com",
@@ -148,14 +174,12 @@
         appId: "1:182442171:web:b64125daa653c82855319e",
         measurementId: "G-YQ70LMPHX8"
       };
-
       const app = initializeApp(firebaseConfig);
-      const db = getFirestore(app);
+      db = getFirestore(app);
       const auth = getAuth(app);
 
-      // sign in anonymously so we have a stable path to read/write
       await new Promise(resolve => {
-        const unsub = onAuthStateChanged(auth, async user => {
+        const unsub = onAuthStateChanged(auth, async (user) => {
           unsub();
           if (user) {
             window.userId = user.uid;
@@ -163,33 +187,31 @@
             const cred = await signInAnonymously(auth);
             window.userId = cred.user.uid;
           }
-
           document.getElementById('user-id-display').textContent = `User: ${window.userId.substring(0,8)}...`;
-          // Start listeners
-          listenToStudents(db);
-          listenToIncidents(db);
+
+          // start listeners
+          listenToStudents();
+          listenToIncidents();
           resolve();
         });
       });
     }
 
-    // Listen to students
-    function listenToStudents(db) {
+    // Listeners
+    function listenToStudents() {
+      if (!db) return;
       const ref = collection(db, STUDENTS_COLLECTION());
       onSnapshot(ref, snap => {
         window.students = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b)=> (a.name||'').localeCompare(b.name||''));
         updateClassFilterOptions();
-        renderTrackerGrid();
-        // keep student dropdown and charts in sync
+        renderTracker();
         updateStudentSelect();
-        renderChartsForSelection(); // redraw charts if selection exists
-      }, err => {
-        console.error("students listen error", err);
-      });
+        renderChartsForSelection();
+      }, err => console.error("students listen error", err));
     }
 
-    // Listen to incidents
-    function listenToIncidents(db) {
+    function listenToIncidents() {
+      if (!db) return;
       const ref = collection(db, INCIDENTS_COLLECTION());
       onSnapshot(ref, snap => {
         const map = {};
@@ -201,53 +223,35 @@
           map[date][key] = { ...data, docId: docSnap.id };
         });
         window.incidentsByDate = map;
-        renderTrackerGrid();
+        renderTracker();
         renderChartsForSelection();
-      }, err => {
-        console.error("incidents listen error", err);
-      });
+      }, err => console.error("incidents listen error", err));
     }
 
-    // Utility: produce array of last N dates (YYYY-MM-DD), oldest first
-    function lastNDates(n = 21) {
-      const base = new Date();
-      const arr = [];
-      for (let i = n-1; i >= 0; i--) {
-        const d = new Date(base);
-        d.setDate(base.getDate() - i);
-        arr.push(formatDate(d));
-      }
-      return arr;
-    }
-
-    // --- UI: class filter and student select ---
+    // --- UI helpers ---
     function updateClassFilterOptions() {
       const sel = document.getElementById('class-filter-select');
-      const classes = ['All', ...[...new Set(window.students.map(s => s.class).filter(Boolean))].sort()];
+      const classes = ['All', ...[...new Set(window.students.map(s=>s.class).filter(Boolean))].sort()];
       const prev = window.currentClassFilter || 'All';
       sel.innerHTML = classes.map(c => `<option value="${c}">${c}</option>`).join('');
-      if (classes.includes(prev)) sel.value = prev;
-      else sel.value = 'All';
-      // set datePicker
-      const dp = document.getElementById('date-picker');
-      dp.max = today;
-      dp.value = window.currentTrackingDate || today;
+      sel.value = classes.includes(prev) ? prev : 'All';
+      // date picker
+      document.getElementById('date-picker').max = today;
+      document.getElementById('date-picker').value = window.currentTrackingDate || today;
     }
 
     function updateStudentSelect() {
-      const sel = document.getElementById('report-student-select');
+      const sel = document.getElementById('student-select');
       const prev = sel.value;
-      sel.innerHTML = '<option value="">-- Select Student --</option>' +
-        window.students.map(s => `<option value="${s.id}">${s.name} (${s.class||'—'})</option>`).join('');
-      // restore previous selection if still valid
-      if (prev && window.students.some(s => s.id === prev)) sel.value = prev;
+      sel.innerHTML = '<option value="">-- Select Student --</option>' + window.students.map(s => `<option value="${s.id}">${s.name} (${s.class||'—'})</option>`).join('');
+      if (prev && window.students.some(s=>s.id===prev)) sel.value = prev;
     }
 
-    // --- Tracker grid rendering (keeps previous style) ---
-    function renderTrackerGrid() {
+    // --- Tracker render ---
+    function renderTracker() {
       const container = document.getElementById('tracker-grid');
       if (!window.students.length) {
-        container.innerHTML = '<div style="padding:1rem;color:#6b7280;">No students — add some via Manage Students.</div>';
+        container.innerHTML = '<div style="padding:1rem;color:#6b7280;">No students — add some with Manage Students.</div>';
         return;
       }
       const filtered = window.students.filter(s => window.currentClassFilter === 'All' || s.class === window.currentClassFilter);
@@ -255,188 +259,162 @@
         container.innerHTML = '<div style="padding:1rem;color:#6b7280;">No students for this class.</div>';
         return;
       }
-
-      const datesMap = window.incidentsByDate;
-      const htmlParts = [];
-      // header
-      htmlParts.push(`<div class="main-grid grid-header">
+      const dateMap = window.incidentsByDate || {};
+      const rows = [];
+      rows.push(`<div class="main-grid grid-header">
         <div class="grid-header-cell">Student</div>
         ${behaviorCategories.map(c=>`<div class="grid-header-cell">${c.name}</div>`).join('')}
       </div>`);
-      // rows
       filtered.forEach((s, idx) => {
-        const rowClass = (idx % 2 === 0) ? 'bg-odd' : 'bg-even';
-        const cells = behaviorCategories.map(c => {
+        const rowClass = (idx%2===0)?'bg-odd':'bg-even';
+        const cells = behaviorCategories.map(c=>{
           const key = `${s.id}-${c.id}`;
-          const logged = !!(datesMap && datesMap[window.currentTrackingDate] && datesMap[window.currentTrackingDate][key]);
-          return `<div class="grid-row-cell incident-cell ${logged ? 'logged' : ''}" onclick="toggleIncident('${s.id}', ${c.id})">${logged ? '❌' : '○'}</div>`;
+          const logged = !!(dateMap[window.currentTrackingDate] && dateMap[window.currentTrackingDate][key]);
+          return `<div class="grid-row-cell incident-cell ${logged?'logged':''}" onclick="toggleIncident('${s.id}', ${c.id})">${logged?'❌':'○'}</div>`;
         }).join('');
-        htmlParts.push(`<div class="main-grid ${rowClass}">
+        rows.push(`<div class="main-grid ${rowClass}">
           <div class="grid-row-cell grid-row-name">${s.name} <span style="color:#6b7280;font-size:0.8rem;">(${s.class||'—'})</span></div>
           ${cells}
         </div>`);
       });
-
-      container.innerHTML = htmlParts.join('');
+      container.innerHTML = rows.join('');
     }
 
-    // --- Incident toggle exposed globally ---
+    // --- Manage students (CRUD) ---
+    window.openModal = (id) => { document.getElementById(id).classList.add('visible'); document.getElementById(id).style.display='flex'; renderStudentList(); };
+    window.closeModal = (id) => { document.getElementById(id).classList.remove('visible'); document.getElementById(id).style.display='none'; };
+
+    async function renderStudentList() {
+      const container = document.getElementById('student-list-container');
+      container.innerHTML = window.students.map(s => `
+        <div class="student-list-item">
+          <div>${s.name} <small style="color:#6b7280">(${s.class||'—'})</small></div>
+          <div><button class="btn secondary" onclick="deleteStudent('${s.id}','${s.name}')">Delete</button></div>
+        </div>
+      `).join('');
+    }
+
+    window.addStudent = async () => {
+      const name = document.getElementById('new-student-name').value.trim();
+      const cls = document.getElementById('new-student-class').value.trim() || 'Unassigned';
+      if (!name) return alert('Enter a name');
+      await addDoc(collection(db, STUDENTS_COLLECTION()), { name, class: cls, createdAt: Date.now() });
+      document.getElementById('new-student-name').value=''; document.getElementById('new-student-class').value='';
+    };
+
+    window.deleteStudent = async (id, name) => {
+      if (!confirm(`Delete ${name} and all their incidents?`)) return;
+      // delete incidents for this student
+      const q = query(collection(db, INCIDENTS_COLLECTION()), where('studentId','==', id));
+      const snap = await getDocs(q);
+      await Promise.all(snap.docs.map(d => deleteDoc(doc(db, INCIDENTS_COLLECTION(), d.id))));
+      // delete student
+      await deleteDoc(doc(db, STUDENTS_COLLECTION(), id));
+    };
+
+    // --- Incident toggle (uses global db) ---
     window.toggleIncident = async (studentId, categoryId) => {
-      // add/delete incident in Firestore
-      const db = getFirestore();
       const key = `${studentId}-${categoryId}`;
       const dayMap = window.incidentsByDate[window.currentTrackingDate] || {};
       const existing = dayMap[key];
       if (existing) {
-        // delete
         await deleteDoc(doc(db, INCIDENTS_COLLECTION(), existing.docId));
       } else {
-        await addDoc(collection(db, INCIDENTS_COLLECTION()), {
-          studentId, category: categoryId, date: window.currentTrackingDate, timestamp: Date.now()
-        });
+        await addDoc(collection(db, INCIDENTS_COLLECTION()), { studentId, category: categoryId, date: window.currentTrackingDate, timestamp: Date.now() });
       }
     };
 
-    // --- Chart rendering logic ---
-
-    // Build datasets for line chart for selected student
-    function buildLineChartData(selectedStudentId) {
-      const dates = lastNDates(21);
-      // prepare data array per category
-      const datasets = behaviorCategories.map(cat => {
-        const data = dates.map(date => {
-          const incs = window.incidentsByDate[date] || {};
-          const key = `${selectedStudentId}-${cat.id}`;
-          return !!incs[key] ? 1 : 0; // each logged incident counts as 1 (if app allows multiple same category per day, adjust accordingly)
-        });
-        return {
-          label: cat.name,
-          data,
-          borderColor: cat.color,
-          backgroundColor: cat.color,
-          tension: 0.2,
-          pointRadius: 3,
-          fill: false
-        };
-      });
-
-      return { labels: dates, datasets };
+    // --- Charts setup (Chart.js) ---
+    let lineChart = null, donutChart = null, showDonut = false;
+    function lastNDates(n=21) {
+      const base = new Date();
+      const arr = [];
+      for (let i = n-1; i >= 0; i--) {
+        const d = new Date(base); d.setDate(base.getDate() - i);
+        arr.push(formatDate(d));
+      }
+      return arr;
     }
 
-    // Build totals by class for donut chart (sum of all categories in last 21 days)
+    function buildLineData(studentId) {
+      const labels = lastNDates(21);
+      const datasets = behaviorCategories.map(cat => {
+        const data = labels.map(date => {
+          const incs = window.incidentsByDate[date] || {};
+          const key = `${studentId}-${cat.id}`;
+          return incs[key] ? 1 : 0; // assuming one incident per student-category per day
+        });
+        return { label: cat.name, data, borderColor: cat.color, backgroundColor: cat.color, tension:0.2, fill:false };
+      });
+      return { labels, datasets };
+    }
+
     function buildDonutData() {
+      const labels = [];
+      const data = [];
+      const countsByClass = {};
       const dates = lastNDates(21);
-      const countsByStudent = {}; // studentId -> count
       dates.forEach(date => {
         const incs = window.incidentsByDate[date] || {};
-        Object.values(incs).forEach(inc => {
-          countsByStudent[inc.studentId] = (countsByStudent[inc.studentId] || 0) + 1;
-        });
+        Object.values(incs).forEach(inc => { countsByClass[inc.studentId] = (countsByClass[inc.studentId]||0) + 1; });
       });
-
       // aggregate by class
-      const countsByClass = {};
       window.students.forEach(s => {
-        const c = s.class || 'Unassigned';
-        countsByClass[c] = (countsByClass[c] || 0) + (countsByStudent[s.id] || 0);
+        const cls = s.class || 'Unassigned';
+        countsByClass[s.id] = countsByClass[s.id] || 0;
+        countsByClass[cls] = (countsByClass[cls]||0) + countsByClass[s.id];
       });
-
-      return {
-        labels: Object.keys(countsByClass),
-        data: Object.values(countsByClass),
-      };
+      // But above aggregated poorly (student id + class keys). Simpler: compute map class->count:
+      const classCounts = {};
+      window.students.forEach(s => {
+        const cls = s.class || 'Unassigned';
+        const studentCount = (countsByClass[s.id] || 0);
+        classCounts[cls] = (classCounts[cls] || 0) + studentCount;
+      });
+      for (const [k,v] of Object.entries(classCounts)) { labels.push(k); data.push(v); }
+      return { labels, data };
     }
 
-    // Initialize or update line chart
-    function renderLineChart(selectedStudentId) {
+    function renderLineChartFor(studentId) {
       const ctx = document.getElementById('lineChart').getContext('2d');
-      const chartData = buildLineChartData(selectedStudentId);
-
-      if (lineChart) {
-        // update datasets & labels
-        lineChart.data.labels = chartData.labels;
-        lineChart.data.datasets = chartData.datasets;
-        lineChart.update();
-        return;
-      }
-
+      const chartData = buildLineData(studentId);
+      if (lineChart) { lineChart.data = chartData; lineChart.update(); return; }
       lineChart = new Chart(ctx, {
         type: 'line',
         data: chartData,
         options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          stacked: false,
-          plugins: {
-            legend: { position: 'top' },
-            tooltip: {
-              callbacks: {
-                label: ctx => `${ctx.dataset.label}: ${ctx.formattedValue}`
-              }
-            }
-          },
-          scales: {
-            x: { title: { display: true, text: 'Date' } },
-            y: { title: { display: true, text: 'Incidents' }, beginAtZero: true, ticks: { precision:0 } }
-          }
+          responsive: true, maintainAspectRatio:false,
+          interaction: { mode:'index', intersect:false },
+          plugins: { legend:{ position:'top' } },
+          scales: { x:{ title:{display:true,text:'Date'} }, y:{ title:{display:true,text:'Incidents'}, beginAtZero:true, ticks:{precision:0} } }
         }
       });
     }
 
-    // Initialize or update donut chart
     function renderDonutChart() {
       const ctx = document.getElementById('donutChart').getContext('2d');
-      const donutData = buildDonutData();
-      const colors = donutData.labels.map((_, i) => {
-        // reuse category color palette or generate pastel colors
-        const palette = ["#ef4444","#3b82f6","#10b981","#f59e0b","#8b5cf6","#06b6d4","#fb7185","#f97316"];
-        return palette[i % palette.length];
-      });
-
-      if (donutChart) {
-        donutChart.data.labels = donutData.labels;
-        donutChart.data.datasets[0].data = donutData.data;
-        donutChart.data.datasets[0].backgroundColor = colors;
-        donutChart.update();
-        return;
-      }
-
-      donutChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-          labels: donutData.labels,
-          datasets: [{ data: donutData.data, backgroundColor: colors, hoverOffset: 8 }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { position: 'right' }, tooltip: { enabled: true } }
-        }
-      });
+      const d = buildDonutData();
+      const colors = ['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4'];
+      if (donutChart) { donutChart.data.labels = d.labels; donutChart.data.datasets[0].data = d.data; donutChart.update(); return; }
+      donutChart = new Chart(ctx, { type:'doughnut', data:{ labels: d.labels, datasets:[{ data: d.data, backgroundColor: colors.slice(0,d.labels.length) }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right' } } } });
     }
 
-    // Called whenever selection changes or data updates
     function renderChartsForSelection() {
-      const sel = document.getElementById('report-student-select');
-      const selectedId = sel.value;
-      if (!selectedId) {
-        // clear line chart (show placeholder)
+      const sel = document.getElementById('student-select');
+      const sid = sel.value;
+      if (!sid) {
         if (lineChart) {
-          lineChart.data.labels = lastNDates(21);
-          lineChart.data.datasets = behaviorCategories.map(cat => ({ label: cat.name, data: Array(21).fill(0), borderColor: cat.color, backgroundColor: cat.color, tension:0.2 }));
+          lineChart.data = { labels: lastNDates(21), datasets: behaviorCategories.map(cat => ({ label: cat.name, data: Array(21).fill(0), borderColor: cat.color, backgroundColor: cat.color, tension:0.2 })) };
           lineChart.update();
         }
-        // also update donut
-        if (donutChart) renderDonutChart();
+        renderDonutChart();
         return;
       }
-      // show line chart and hide donut
-      if (showDonut) toggleChartView(); // ensure line chart visible by default when selection changes
-      renderLineChart(selectedId);
+      // show line chart
+      if (showDonut) toggleChartView();
+      renderLineChartFor(sid);
     }
 
-    // Toggle between line and donut
     function toggleChartView() {
       showDonut = !showDonut;
       const lineEl = document.getElementById('lineChart');
@@ -455,59 +433,31 @@
       }
     }
 
-    // Hook up UI controls
+    // --- Event handlers hookup ---
     document.getElementById('btn-toggle-chart').addEventListener('click', toggleChartView);
-    document.getElementById('btn-refresh').addEventListener('click', () => {
-      // simple re-render (listeners update automatically)
-      updateStudentSelect();
-      renderTrackerGrid();
-      renderChartsForSelection();
-      renderDonutChart();
-    });
-    document.getElementById('date-picker').addEventListener('change', (e) => {
-      window.currentTrackingDate = e.target.value;
-      renderTrackerGrid();
-    });
-    document.getElementById('class-filter-select').addEventListener('change', (e) => {
-      window.currentClassFilter = e.target.value;
-      updateStudentSelect();
-      renderTrackerGrid();
-      renderChartsForSelection();
-    });
-    document.getElementById('report-student-select').addEventListener('change', () => {
-      renderChartsForSelection();
-    });
+    document.getElementById('btn-refresh').addEventListener('click', () => { updateStudentSelect(); renderTracker(); renderChartsForSelection(); renderDonutChart(); });
+    document.getElementById('manage-btn').addEventListener('click', () => openModal('manage-students-modal'));
+    document.getElementById('date-picker').addEventListener('change', (e) => { window.currentTrackingDate = e.target.value; renderTracker(); });
+    document.getElementById('class-filter-select').addEventListener('change', (e) => { window.currentClassFilter = e.target.value; updateStudentSelect(); renderTracker(); renderChartsForSelection(); });
+    document.getElementById('student-select').addEventListener('change', renderChartsForSelection);
 
-    // Expose some functions for debugging
-    window.renderChartsForSelection = renderChartsForSelection;
-    window.toggleChartView = toggleChartView;
-
-    // Initialize app
+    // --- DOM ready: initialize app ---
     document.addEventListener('DOMContentLoaded', async () => {
-      // set date picker default to today
       document.getElementById('date-picker').max = today;
       document.getElementById('date-picker').value = today;
-      await initializeFirebaseAndListeners();
-      // create empty chart instances (placeholders)
+      window.currentTrackingDate = today;
+      await initializeFirebase();
+      // create placeholder charts
       const ctxLine = document.getElementById('lineChart').getContext('2d');
-      lineChart = new Chart(ctxLine, {
-        type: 'line',
-        data: { labels: lastNDates(21), datasets: behaviorCategories.map(cat => ({ label: cat.name, data: Array(21).fill(0), borderColor: cat.color, backgroundColor: cat.color, tension:0.2 })) },
-        options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
-      });
-      // donut placeholder
+      lineChart = new Chart(ctxLine, { type:'line', data:{ labels:lastNDates(21), datasets: behaviorCategories.map(cat=>({ label:cat.name, data:Array(21).fill(0), borderColor:cat.color, backgroundColor:cat.color, tension:0.2 })) }, options:{ responsive:true, maintainAspectRatio:false } });
       const ctxDonut = document.getElementById('donutChart').getContext('2d');
       donutChart = new Chart(ctxDonut, { type:'doughnut', data:{ labels:[], datasets:[{ data:[], backgroundColor:[] }] }, options:{ responsive:true, maintainAspectRatio:false } });
-      // initial render
-      updateStudentSelect();
-      renderTrackerGrid();
-      renderChartsForSelection();
     });
 
-    // Small helper to get Firestore instance (used by toggleIncident)
-    import { getFirestore as _getFs, doc as _doc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    function getFirestore() { return _getFs(); }
-    function doc(db, p, id) { return _doc(db, p, id); }
+    // Small Firestore helpers used by deleteStudent and toggleIncident
+    // (doc and getFirestore already imported at top via firestore module)
+    // We'll rely on db variable for operations (db is set in initialize)
+
   </script>
 </body>
 </html>

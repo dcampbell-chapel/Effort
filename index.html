@@ -125,7 +125,7 @@
           <select id="class-filter-select"></select>
         </label>
       </div>
-      <button class="btn-primary" onclick="openModal('manage-students-modal')">
+      <button class="btn-primary">
         <i class="fas fa-users-cog"></i> Manage Students
       </button>
     </div>
@@ -293,31 +293,54 @@
       container.innerHTML = html;
     };
 
+    // ✅ Fixed renderReport function (preserves selection)
     window.renderReport = () => {
       const select = document.getElementById('report-student-select');
       const view = document.getElementById('report-view');
+
+      // Preserve current selection before rebuilding
+      const previousValue = select.value;
+
+      // Rebuild dropdown
       select.innerHTML =
         '<option value="">-- Select Student --</option>' +
-        students.map(s=>`<option value="${s.id}">${s.name} (${s.class})</option>`).join('');
+        students.map(s => `<option value="${s.id}">${s.name} (${s.class})</option>`).join('');
+
+      // Restore selection
+      if (previousValue && students.some(s => s.id === previousValue)) {
+        select.value = previousValue;
+      }
+
       const sid = select.value;
-      if (!sid) { view.textContent = 'Select a student to view their report.'; return; }
+      if (!sid) {
+        view.textContent = 'Select a student to view their report.';
+        return;
+      }
+
       const todayD = new Date();
-      const dates = Array.from({length:21},(_,i)=>{
-        const d=new Date(todayD); d.setDate(todayD.getDate()-i);
+      const dates = Array.from({ length: 21 }, (_, i) => {
+        const d = new Date(todayD);
+        d.setDate(todayD.getDate() - i);
         return d.toISOString().split('T')[0];
       }).reverse();
+
       let rows = '';
-      dates.forEach(date=>{
-        const incs = incidentsByDate[date]||{};
-        const cells = behaviorCategories.map(c=>{
+      dates.forEach(date => {
+        const incs = incidentsByDate[date] || {};
+        const cells = behaviorCategories.map(c => {
           const key = `${sid}-${c.id}`;
           const logged = incs[key];
-          return `<td>${logged?'✔️':''}</td>`;
+          return `<td>${logged ? '✔️' : ''}</td>`;
         }).join('');
-        const todayClass = date===today?' class="bg-today"':'';
+        const todayClass = date === today ? ' class="bg-today"' : '';
         rows += `<tr${todayClass}><td>${date}</td>${cells}</tr>`;
       });
-      view.innerHTML = `<table class="report-table"><thead><tr><th>Date</th>${behaviorCategories.map(c=>`<th>${c.name}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+
+      view.innerHTML = `
+        <table class="report-table">
+          <thead><tr><th>Date</th>${behaviorCategories.map(c => `<th>${c.name}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
     };
 
     document.addEventListener('DOMContentLoaded', ()=>{
@@ -325,11 +348,6 @@
       document.getElementById('date-picker').value = today;
       initializeFirebase();
     });
-
-    // Ensure globals are available for inline events
-    window.updateClassFilterOptions = updateClassFilterOptions;
-    window.listenToStudents = listenToStudents;
-    window.listenToIncidents = listenToIncidents;
   </script>
 </body>
 </html>

@@ -3,12 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Student Behavior Tracker (Full + Charts Fixed)</title>
+  <title>Student Behavior Tracker (Category Visuals)</title>
 
-  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
@@ -53,15 +50,7 @@
     }
     .btn.secondary { background: #6b7280; }
 
-    .grid-panel {
-      background: #fff;
-      padding: 1rem;
-      border-radius: 0.75rem;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-      margin-bottom: 1rem;
-    }
-
-    .chart-panel {
+    .grid-panel, .chart-panel {
       background: #fff;
       padding: 1rem;
       border-radius: 0.75rem;
@@ -178,8 +167,8 @@
       { id:5, name:"Deadlines", color:"#8b5cf6" }
     ];
 
-    function STUDENTS_COLLECTION() { return `artifacts/effort-51e3c/users/${userId}/students`; }
-    function INCIDENTS_COLLECTION() { return `artifacts/effort-51e3c/users/${userId}/incidents`; }
+    const STUDENTS_COLLECTION = () => `artifacts/effort-51e3c/users/${userId}/students`;
+    const INCIDENTS_COLLECTION = () => `artifacts/effort-51e3c/users/${userId}/incidents`;
 
     async function init() {
       await signInAnonymously(auth);
@@ -195,7 +184,7 @@
     function startListeners() {
       onSnapshot(collection(db, STUDENTS_COLLECTION()), (snap) => {
         students = snap.docs.map(d => ({ id:d.id, ...d.data() }))
-          .sort((a,b)=>a.name.localeCompare(b.name, undefined, {sensitivity:'base'})); // ✅ alphabetical sort
+          .sort((a,b)=>a.name.localeCompare(b.name, undefined, {sensitivity:'base'}));
         renderGrid();
         updateClassFilterOptions();
         updateStudentSelect();
@@ -272,7 +261,6 @@
       renderGrid();
       updateCharts();
     });
-
     document.getElementById("student-select").addEventListener("change", updateCharts);
     document.getElementById("date-picker").value = currentTrackingDate;
     document.getElementById("date-picker").addEventListener("change", e=>{
@@ -289,40 +277,54 @@
       const selectedStudentId = document.getElementById("student-select").value;
       const filteredIncidents = Object.values(incidentsByDate).flatMap(d=>Object.values(d));
 
+      // === LINE CHART: incidents per category per day ===
       if (selectedStudentId) {
-        // Line chart: incidents per day for student
         const days = [];
-        const counts = [];
         for(let i=20;i>=0;i--){
           const d = new Date();
           d.setDate(d.getDate()-i);
-          const key = d.toISOString().split('T')[0];
-          days.push(key.slice(5));
-          const count = filteredIncidents.filter(x=>x.studentId===selectedStudentId && x.date===key).length;
-          counts.push(count);
+          days.push(d.toISOString().split('T')[0]);
         }
+        const datasets = behaviorCategories.map(cat=>{
+          const dataPoints = days.map(day=>{
+            return filteredIncidents.filter(x=>x.studentId===selectedStudentId && x.category===cat.id && x.date===day).length;
+          });
+          return {
+            label: cat.name,
+            data: dataPoints,
+            borderColor: cat.color,
+            backgroundColor: cat.color,
+            tension: 0.3,
+            fill: false
+          };
+        });
+
         if(lineChart) lineChart.destroy();
         lineChart = new Chart(lineCtx, {
           type:'line',
-          data:{ labels:days, datasets:[{label:'Incidents', data:counts, borderColor:'#dc2626', fill:false}]},
-          options:{ scales:{y:{beginAtZero:true, ticks:{precision:0}}}}
+          data:{ labels:days.map(d=>d.slice(5)), datasets },
+          options:{ plugins:{ legend:{position:'bottom'} }, scales:{y:{beginAtZero:true,ticks:{precision:0}}}}
         });
       }
 
-      // Donut chart: incidents by class
-      const classMap = {};
-      filteredIncidents.forEach(x=>{
-        const st = students.find(s=>s.id===x.studentId);
-        const cls = st?.class || "Unassigned";
-        classMap[cls] = (classMap[cls]||0)+1;
+      // === DONUT CHART: total incidents by category ===
+      const categoryTotals = behaviorCategories.map(cat=>{
+        return filteredIncidents.filter(x=>{
+          const st = students.find(s=>s.id===x.studentId);
+          return (!selectedStudentId || x.studentId===selectedStudentId) &&
+                 (currentClassFilter==="All" || st?.class===currentClassFilter) &&
+                 x.category===cat.id;
+        }).length;
       });
+
       if(donutChart) donutChart.destroy();
       donutChart = new Chart(donutCtx, {
         type:'doughnut',
         data:{
-          labels:Object.keys(classMap),
-          datasets:[{ data:Object.values(classMap), backgroundColor:['#f87171','#60a5fa','#34d399','#fbbf24','#a78bfa','#f472b6'] }]
-        }
+          labels:behaviorCategories.map(c=>c.name),
+          datasets:[{ data:categoryTotals, backgroundColor:behaviorCategories.map(c=>c.color) }]
+        },
+        options:{ plugins:{ legend:{position:'bottom'} } }
       });
     }
 

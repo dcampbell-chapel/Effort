@@ -94,7 +94,6 @@
 
       <div style="display:flex; gap:0.5rem; align-items:center;">
         <button id="manage-btn" class="btn"><i class="fas fa-users-cog"></i> Manage</button>
-        <button id="show-summary-btn" class="btn secondary">Show Summary</button>
       </div>
     </div>
 
@@ -200,7 +199,6 @@
   const rangeDaysEl = document.getElementById('range-days');
   const rangeSliderEl = document.getElementById('range-slider');
   const userDisplayEl = document.getElementById('user-id-display');
-  const showSummaryBtn = document.getElementById('show-summary-btn');
   const lineCanvas = document.getElementById('lineChart');
   const donutCanvas = document.getElementById('donutChart');
   const manageBtn = document.getElementById('manage-btn');
@@ -553,19 +551,6 @@
     updateCharts();
   });
 
-  showSummaryBtn.addEventListener('click', () => {
-    const lc = lineCanvas, dc = donutCanvas;
-    if (dc.style.display === 'block') {
-      dc.style.display = 'none';
-      lc.style.display = 'block';
-      showSummaryBtn.textContent = 'Show Summary';
-    } else {
-      dc.style.display = 'block';
-      lc.style.display = 'none';
-      showSummaryBtn.textContent = 'Show Chart';
-      updateCharts();
-    }
-  });
 
   manageBtn.addEventListener('click', () => {
     manageModal.classList.add('visible');

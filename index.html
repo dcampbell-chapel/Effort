@@ -1,481 +1,605 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Student Behavior Tracker</title>
-
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Student Behavior Tracker — Multi-Course</title>
 
   <!-- Font Awesome -->
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-  />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <style>
-    body {
-      font-family: "Inter", sans-serif;
-      background-color: #f9fafb;
-      margin: 0;
-      padding: 0;
-    }
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    :root { --accent:#dc2626; --muted:#6b7280; --bg:#f8fafc; --panel:#fff; --shadow:0 8px 24px rgba(15,23,42,0.06); }
+    html,body { height:100%; }
+    body { margin:0; font-family:Inter,system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:#111827; padding:1rem; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    .container { max-width:1152px; margin:0 auto; }
+    header { margin-bottom: 1rem; }
+    .title { color:var(--accent); font-size:1.5rem; font-weight:700; margin:0; }
+    .lead { color:var(--muted); margin-top:0.25rem; margin-bottom:0.5rem; }
 
-    header {
-      text-align: center;
-      padding: 2rem 1rem 1rem;
-    }
+    /* action bar */
+    .action-bar { display:flex; justify-content:space-between; gap:1rem; align-items:center; background:var(--panel); padding:1rem; border-radius:0.75rem; box-shadow:var(--shadow); margin-bottom:1rem; flex-wrap:wrap; }
+    .controls { display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; }
+    label { font-weight:600; color:#374151; font-size:0.95rem; display:flex; align-items:center; gap:0.5rem; }
+    .form-control { padding:0.5rem 0.6rem; border-radius:0.5rem; border:1px solid #e6e9ee; background:#fff; min-width:140px; }
 
-    h1 {
-      color: #b91c1c;
-      font-size: 2rem;
-      margin-bottom: 0.5rem;
-    }
+    .btn { background:var(--accent); color:#fff; border:none; padding:0.45rem 0.75rem; border-radius:0.5rem; cursor:pointer; font-weight:600; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    .btn.secondary { background:#475569; }
 
-    .action-bar {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 2rem;
-      background: #fff;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-      padding: 1rem 2rem;
-      border-radius: 0.75rem;
-      max-width: 900px;
-      margin: 0 auto 2rem;
-    }
+    .panel { background:var(--panel); padding:1rem; border-radius:0.75rem; box-shadow:var(--shadow); margin-bottom:1rem; }
 
-    label {
-      font-weight: 600;
-      color: #374151;
-      margin-right: 0.5rem;
-    }
+    /* grid */
+    .main-grid { display:grid; grid-template-columns: 1.5fr repeat(5, 1fr); border-radius:0.5rem; overflow:hidden; border:1px solid #eef2f7; }
+    .grid-header-cell { background:#f3f4f6; font-weight:700; padding:0.6rem; text-align:center; color:#374151; border-bottom:1px solid #eef2f7; }
+    .grid-row-cell { padding:0.6rem; text-align:center; border-bottom:1px solid #f6f7fb; font-size:0.95rem; }
+    .grid-row-name { text-align:left; font-weight:600; padding-left:0.8rem; }
+    .incident-cell { display:flex; align-items:center; justify-content:center; height:48px; cursor:pointer; font-size:1.2rem; transition:background 0.15s; }
+    .incident-cell:hover { background:#fff1f1; }
+    .incident-cell.logged { background:#fee2e2; color:#7f1d1d; font-weight:700; }
 
-    select,
-    input[type="date"] {
-      padding: 0.4rem 0.6rem;
-      border: 1px solid #d1d5db;
-      border-radius: 0.5rem;
-      font-size: 1rem;
-    }
+    /* charts */
+    .chart-controls { display:flex; gap:1rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; }
+    .range { display:flex; gap:0.5rem; align-items:center; }
+    input[type="range"] { width:260px; }
+    .chart-wrap { width:100%; height:420px; border-radius:0.5rem; background:linear-gradient(180deg, rgba(255,255,255,0.6), rgba(250,250,251,0.8)); padding:0.5rem; box-sizing:border-box; }
 
-    .tracker-wrapper {
-      background: white;
-      border-radius: 0.75rem;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      overflow: hidden;
-      margin: 0 auto;
-      max-width: 1150px;
-    }
+    /* modal */
+    .modal-overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center; background: rgba(2,6,23,0.6); z-index:50; }
+    .modal-overlay.visible { display:flex; }
+    .modal { background:var(--panel); border-radius:0.75rem; width:100%; max-width:720px; padding:0.75rem; box-shadow:0 30px 60px rgba(2,6,23,0.25); }
+    .student-list-item { display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid #f3f4f6; }
+    small.muted { color:var(--muted); }
 
-    .main-grid {
-      display: grid;
-      grid-template-columns: 1.5fr repeat(5, 1fr);
-    }
-
-    .grid-header {
-      background-color: #e5e7eb;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    .grid-header div {
-      padding: 0.75rem;
-      border-right: 1px solid #d1d5db;
-    }
-
-    .grid-row {
-      display: contents;
-    }
-
-    .grid-cell {
-      padding: 0.5rem;
-      border-bottom: 1px solid #e5e7eb;
-      text-align: center;
-      font-size: 0.9rem;
-    }
-
-    .grid-cell.name {
-      font-weight: 600;
-      text-align: left;
-      padding-left: 1rem;
-    }
-
-    .incident-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      height: 36px;
-      width: 36px;
-      margin: 0 auto;
-      border-radius: 50%;
-      background-color: #f3f4f6;
-      transition: all 0.2s;
-    }
-
-    .incident-btn:hover {
-      background-color: #e5e7eb;
-    }
-
-    .incident-btn.logged {
-      background-color: #fca5a5;
-      color: #991b1b;
-    }
-
-    .grid-row:nth-child(even) .grid-cell {
-      background-color: #f9fafb;
-    }
-
-    .report-section {
-      background: #fef2f2;
-      border-radius: 0.75rem;
-      padding: 1.5rem;
-      margin: 2.5rem auto;
-      max-width: 1150px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    .report-section h2 {
-      color: #b91c1c;
-      font-size: 1.5rem;
-      margin-bottom: 1rem;
-    }
-
-    #report-view {
-      background: white;
-      border-radius: 0.5rem;
-      padding: 1rem;
-      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    canvas {
-      width: 100% !important;
-      height: 400px !important;
-    }
-
-    .loading {
-      text-align: center;
-      color: #6b7280;
-      padding: 2rem;
+    @media (max-width:720px) {
+      .main-grid { grid-template-columns: 1fr repeat(5, 64px); }
+      .chart-wrap { height:320px; }
     }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Student Behavior Tracker</h1>
-    <p id="user-id-display" style="color: #6b7280; font-size: 0.9rem">
-      User ID: Loading...
-    </p>
-  </header>
+  <div class="container">
+    <header>
+      <h1 class="title">Student Behavior Tracker</h1>
+      <p class="lead">Select a Grade, then filter by Class. Change the date window to update charts.</p>
+    </header>
 
-  <div class="action-bar">
-    <div>
-      <label for="grade-select">Grade:</label>
-      <select id="grade-select" onchange="changeGrade(event)">
-        <option value="grade9">Grade 9</option>
-        <option value="grade11">Grade 11</option>
-      </select>
+    <!-- control bar -->
+    <div class="action-bar">
+      <div class="controls">
+        <label>Grade:
+          <select id="grade-select" class="form-control">
+            <option value="grade9">Grade 9</option>
+            <option value="grade11">Grade 11</option>
+          </select>
+        </label>
+
+        <label>Date:
+          <input id="date-picker" class="form-control" type="date">
+        </label>
+
+        <label>Class:
+          <select id="class-filter-select" class="form-control"></select>
+        </label>
+
+        <label>Student:
+          <select id="student-select" class="form-control"><option value="">-- Select Student --</option></select>
+        </label>
+
+        <div id="user-id-display" style="margin-left:8px;color:var(--muted);font-weight:600;">Shared workspace</div>
+      </div>
+
+      <div style="display:flex; gap:0.5rem; align-items:center;">
+        <button id="manage-btn" class="btn"><i class="fas fa-users-cog"></i> Manage</button>
+        <button id="show-summary-btn" class="btn secondary">Show Summary</button>
+      </div>
     </div>
 
-    <div>
-      <label for="class-select">Class:</label>
-      <select id="class-select" onchange="changeClassFilter(event)">
-        <option value="All">All</option>
-      </select>
+    <!-- tracker -->
+    <div id="tracker-panel" class="panel">
+      <div id="tracker-grid">Loading tracker...</div>
     </div>
 
-    <div>
-      <label for="date-picker">Date:</label>
-      <input type="date" id="date-picker" onchange="changeDate(event)" />
+    <!-- charts -->
+    <div class="panel">
+      <div class="chart-controls">
+        <div class="range">
+          <strong>Window:</strong>
+          <span style="color:var(--muted)">last</span>
+          <span id="range-days" style="font-weight:700;color:var(--accent);margin:0 0.25rem;">21</span>
+          <span style="color:var(--muted)">days</span>
+        </div>
+
+        <input id="range-slider" type="range" min="7" max="180" step="1" value="21">
+
+        <div style="margin-left:auto; display:flex; gap:0.5rem;">
+          <button id="btn-refresh" class="btn secondary">Refresh</button>
+        </div>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="lineChart" style="width:100%;height:100%"></canvas>
+        <canvas id="donutChart" style="width:100%;height:100%; display:none; margin-top:0.5rem;"></canvas>
+      </div>
     </div>
   </div>
 
-  <div id="tracker-container" class="tracker-wrapper">
-    <div id="tracker-grid" class="loading">
-      <i class="fas fa-spinner fa-spin"></i> Loading tracker...
-    </div>
-  </div>
+  <!-- modal -->
+  <div id="manage-students-modal" class="modal-overlay" aria-hidden="true">
+    <div class="modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+        <h3 style="margin:0;color:var(--accent)">Manage Students</h3>
+        <button onclick="closeModal('manage-students-modal')" class="btn secondary">Close</button>
+      </div>
 
-  <div class="report-section">
-    <h2>3-Week Reporting View</h2>
-    <div style="margin-bottom: 1rem">
-      <label for="report-student-select">Select Student:</label>
-      <select id="report-student-select" onchange="renderReport()">
-        <option value="">-- Select Student --</option>
-      </select>
-    </div>
-    <div id="report-view">
-      <p class="loading">
-        Select a student to view their 3-week incident chart.
-      </p>
+      <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+        <input id="new-student-name" placeholder="Name" class="form-control" />
+        <input id="new-student-class" placeholder="Class" class="form-control" />
+        <button class="btn" onclick="addStudent()">Add</button>
+      </div>
+
+      <div id="student-list-container" style="max-height:300px; overflow:auto;"></div>
     </div>
   </div>
 
   <script type="module">
-    import {
-      initializeApp
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import {
-      getAuth,
-      signInAnonymously,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import {
-      getFirestore,
-      collection,
-      doc,
-      addDoc,
-      deleteDoc,
-      onSnapshot
-    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getFirestore, collection, doc, addDoc, deleteDoc, onSnapshot, getDocs, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  const { Chart } = window;
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyDlsGbo2qdX9HkLbwPYIyvDGDEsWrIboXY",
-      authDomain: "effort-51e3c.firebaseapp.com",
-      projectId: "effort-51e3c",
-      storageBucket: "effort-51e3c.firebasestorage.app",
-      messagingSenderId: "182442171",
-      appId: "1:182442171:web:b64125daa653c82855319e",
-    };
+  // -------------------------
+  // Configuration & constants
+  // -------------------------
+  const firebaseConfig = {
+    apiKey: "AIzaSyDlsGbo2qdX9HkLbwPYIyvDGDEsWrIboXY",
+    authDomain: "effort-51e3c.firebaseapp.com",
+    projectId: "effort-51e3c",
+    storageBucket: "effort-51e3c.firebasestorage.app",
+    messagingSenderId: "182442171",
+    appId: "1:182442171:web:b64125daa653c82855319e",
+    measurementId: "G-YQ70LMPHX8"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+  // Shared workspace ID (everyone reads/writes here)
+  const FIXED_USER_ID = "c6fpAFHWGwZGmCFImvcaQxR4zfs1";
 
-    let userId = "loading";
-    let currentGrade = "grade9";
-    let currentClass = "All";
-    let currentDate = new Date().toISOString().split("T")[0];
-    let students = [];
-    let incidentsByDate = {};
-    let isAuthReady = false;
-    let reportChart = null;
+  // Behavior categories (IDs are stored in Firestore; names are UI labels)
+  const behaviorCategories = [
+    { id: 1, name: "Tardy", color: "#10b981" },
+    { id: 2, name: "Materials", color: "#3b82f6" },
+    { id: 3, name: "Disruption", color: "#ef4444" },
+    { id: 4, name: "Out of Class", color: "#f59e0b" },
+    { id: 5, name: "Deadlines", color: "#8b5cf6" }
+  ];
 
-    const behaviorCategories = [
-      { id: 1, name: "Tardy" },
-      { id: 2, name: "Materials" },
-      { id: 3, name: "Disruption" },
-      { id: 4, name: "Out of Class" },
-      { id: 5, name: "Deadlines" },
-    ];
+  // -------------------------
+  // App state
+  // -------------------------
+  let currentCourse = localStorage.getItem('et_currentCourse') || 'grade9'; // grade9 or grade11
+  let students = []; // list for current course
+  let incidentsByDate = {}; // { 'YYYY-MM-DD': { 'studentId-cat': { ... } } }
+  let currentTrackingDate = new Date().toISOString().split('T')[0];
+  let currentClassFilter = 'All';
+  let windowDays = 21;
 
-    function STUDENTS_COLLECTION() {
-      return `artifacts/effort-51e3c/users/${userId}/courses/${currentGrade}/students`;
+  // Firestore app + auth + db
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+
+  // DOM references
+  const gradeSelectEl = document.getElementById('grade-select');
+  const trackerGridEl = document.getElementById('tracker-grid');
+  const classSelectEl = document.getElementById('class-filter-select');
+  const studentSelectEl = document.getElementById('student-select');
+  const datePickerEl = document.getElementById('date-picker');
+  const rangeDaysEl = document.getElementById('range-days');
+  const rangeSliderEl = document.getElementById('range-slider');
+  const userDisplayEl = document.getElementById('user-id-display');
+  const showSummaryBtn = document.getElementById('show-summary-btn');
+  const lineCanvas = document.getElementById('lineChart');
+  const donutCanvas = document.getElementById('donutChart');
+  const manageBtn = document.getElementById('manage-btn');
+  const manageModal = document.getElementById('manage-students-modal');
+  const studentListContainer = document.getElementById('student-list-container');
+
+  let studentsUnsub = null;
+  let incidentsUnsub = null;
+  let lineChart = null;
+  let donutChart = null;
+
+  // Firestore collection builders (respect currentCourse)
+  const STUDENTS_COLLECTION = () => `artifacts/effort-51e3c/users/${FIXED_USER_ID}/courses/${currentCourse}/students`;
+  const INCIDENTS_COLLECTION = () => `artifacts/effort-51e3c/users/${FIXED_USER_ID}/courses/${currentCourse}/incidents`;
+
+  // Helpers
+  const formatDate = d => d.toISOString().split('T')[0];
+  function lastNDates(n) {
+    const base = new Date();
+    const arr = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(base);
+      d.setDate(base.getDate() - i);
+      arr.push(formatDate(d));
     }
-    function INCIDENTS_COLLECTION() {
-      return `artifacts/effort-51e3c/users/${userId}/courses/${currentGrade}/incidents`;
+    return arr;
+  }
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/[&<>"'`=\/]/g, s => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[s]));
+  }
+
+  // -------------------------
+  // Initialization & auth
+  // -------------------------
+  async function init() {
+    // set UI values
+    gradeSelectEl.value = currentCourse;
+    datePickerEl.max = formatDate(new Date());
+    datePickerEl.value = currentTrackingDate;
+    rangeDaysEl.textContent = windowDays;
+    rangeSliderEl.value = windowDays;
+
+    // sign in anonymously (keeps secure connection)
+    try {
+      await signInAnonymously(auth);
+    } catch (e) {
+      console.warn('Anonymous sign-in failed:', e);
     }
 
-    function formatDate(date) {
-      return date.toISOString().split("T")[0];
-    }
-
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) {
-        const cred = await signInAnonymously(auth);
-        userId = cred.user.uid;
-      } else userId = user.uid;
-      isAuthReady = true;
-      document.getElementById(
-        "user-id-display"
-      ).textContent = `User ID: ${userId.substring(0, 8)}... (App: effort-51e3c)`;
-      listenToStudents();
-      listenToIncidents();
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        userDisplayEl.textContent = `Shared workspace: ${FIXED_USER_ID.substring(0,8)}…`;
+        // start listeners for the initial course
+        attachListenersForCourse(currentCourse);
+        renderEmptyCharts();
+      } else {
+        userDisplayEl.textContent = 'Auth failed';
+        trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">Unable to connect.</div>';
+      }
     });
+  }
 
-    function listenToStudents() {
-      if (!isAuthReady) return;
-      const ref = collection(db, STUDENTS_COLLECTION());
-      onSnapshot(ref, (snap) => {
-        students = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-        students.sort((a, b) => a.name.localeCompare(b.name));
-        updateClassOptions();
-        renderTracker();
-        renderReport();
+  // -------------------------
+  // Listeners per course
+  // -------------------------
+  function detachListeners() {
+    try { if (studentsUnsub) studentsUnsub(); } catch(e) {}
+    try { if (incidentsUnsub) incidentsUnsub(); } catch(e) {}
+    studentsUnsub = null;
+    incidentsUnsub = null;
+  }
+
+  function attachListenersForCourse(course) {
+    // detach any existing listeners
+    detachListeners();
+
+    currentCourse = course;
+    localStorage.setItem('et_currentCourse', currentCourse);
+
+    // Students listener
+    try {
+      studentsUnsub = onSnapshot(collection(db, STUDENTS_COLLECTION()), (snap) => {
+        students = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a,b) => {
+            const aFirst = (a.name || '').split(' ')[0].toLowerCase();
+            const bFirst = (b.name || '').split(' ')[0].toLowerCase();
+            return aFirst.localeCompare(bFirst);
+          });
+        updateClassFilterOptions();
+        updateStudentSelect();
+        renderGrid();
+        updateCharts();
+      }, (err) => {
+        console.error('students listener error:', err);
+        trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">Error loading students.</div>';
       });
+    } catch (e) {
+      console.error('attach students listener error:', e);
     }
 
-    function listenToIncidents() {
-      if (!isAuthReady) return;
-      const ref = collection(db, INCIDENTS_COLLECTION());
-      onSnapshot(ref, (snap) => {
-        incidentsByDate = {};
-        snap.docs.forEach((docSnap) => {
+    // Incidents listener
+    try {
+      incidentsUnsub = onSnapshot(collection(db, INCIDENTS_COLLECTION()), (snap) => {
+        const map = {};
+        snap.docs.forEach(docSnap => {
           const data = docSnap.data();
-          const key = `${data.date}`;
-          if (!incidentsByDate[key]) incidentsByDate[key] = {};
-          incidentsByDate[key][`${data.studentId}-${data.category}`] = {
-            ...data,
-            docId: docSnap.id,
-          };
+          const date = data.date;
+          const key = `${data.studentId}-${data.category}`;
+          if (!map[date]) map[date] = {};
+          map[date][key] = { ...data, docId: docSnap.id };
         });
-        renderTracker();
-        renderReport();
+        incidentsByDate = map;
+        renderGrid();
+        updateCharts();
+      }, (err) => {
+        console.error('incidents listener error:', err);
       });
+    } catch (e) {
+      console.error('attach incidents listener error:', e);
+    }
+  }
+
+  // -------------------------
+  // UI rendering
+  // -------------------------
+  function updateClassFilterOptions() {
+    const classes = ['All', ...[...new Set(students.map(s => s.class).filter(Boolean))].sort()];
+    const prev = currentClassFilter;
+    classSelectEl.innerHTML = classes.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+    currentClassFilter = classes.includes(prev) ? prev : 'All';
+    classSelectEl.value = currentClassFilter;
+    // ensure date picker
+    datePickerEl.max = formatDate(new Date());
+    datePickerEl.value = currentTrackingDate;
+  }
+
+  function updateStudentSelect() {
+    const prev = studentSelectEl.value;
+    studentSelectEl.innerHTML = '<option value="">-- Select Student --</option>' + students.map(s => `<option value="${s.id}">${escapeHtml(s.name)}${s.class ? ' ('+escapeHtml(s.class)+')' : ''}</option>`).join('');
+    if (prev && students.some(s => s.id === prev)) studentSelectEl.value = prev;
+  }
+
+  function renderGrid() {
+    if (!students.length) {
+      trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students yet. Add students via Manage.</div>';
+      return;
     }
 
-    function updateClassOptions() {
-      const select = document.getElementById("class-select");
-      const classes = [
-        "All",
-        ...new Set(students.map((s) => s.class).filter(Boolean)),
-      ];
-      select.innerHTML = classes
-        .map(
-          (c) =>
-            `<option value="${c}" ${
-              c === currentClass ? "selected" : ""
-            }>${c}</option>`
-        )
-        .join("");
+    const filteredStudents = currentClassFilter === 'All' ? students : students.filter(s => s.class === currentClassFilter);
+    if (!filteredStudents.length) {
+      trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students for the selected class.</div>';
+      return;
     }
 
-    window.changeGrade = (e) => {
-      currentGrade = e.target.value;
-      listenToStudents();
-      listenToIncidents();
-    };
+    const parts = [];
+    parts.push(`<div class="main-grid">`);
+    parts.push(`<div class="grid-header-cell">Student</div>`);
+    for (const c of behaviorCategories) parts.push(`<div class="grid-header-cell">${c.name}</div>`);
 
-    window.changeClassFilter = (e) => {
-      currentClass = e.target.value;
-      renderTracker();
-    };
+    for (const s of filteredStudents) {
+      parts.push(`<div class="grid-row-name grid-row-cell">${escapeHtml(s.name)} <small class="muted">(${escapeHtml(s.class || '')})</small></div>`);
+      for (const c of behaviorCategories) {
+        const key = `${s.id}-${c.id}`;
+        const isLogged = !!(incidentsByDate[currentTrackingDate] && incidentsByDate[currentTrackingDate][key]);
+        parts.push(`<div class="grid-row-cell incident-cell ${isLogged ? 'logged' : ''}" onclick="toggleIncident('${s.id}', ${c.id})" title="${isLogged ? 'Click to unmark' : 'Click to mark'}">${isLogged ? '❌' : '○'}</div>`);
+      }
+    }
 
-    window.changeDate = (e) => {
-      currentDate = e.target.value;
-      renderTracker();
-    };
+    parts.push(`</div>`);
+    trackerGridEl.innerHTML = parts.join('');
+  }
 
-    window.toggleIncident = async (studentId, categoryId) => {
-      const dateIncidents = incidentsByDate[currentDate] || {};
-      const key = `${studentId}-${categoryId}`;
-      const existing = dateIncidents[key];
+  // -------------------------
+  // CRUD: students & incidents
+  // -------------------------
+  window.addStudent = async function() {
+    const name = document.getElementById('new-student-name').value.trim();
+    const cls = document.getElementById('new-student-class').value.trim() || 'Unassigned';
+    if (!name) return alert('Please enter a student name.');
+    try {
+      await addDoc(collection(db, STUDENTS_COLLECTION()), { name, class: cls, createdAt: Date.now() });
+      document.getElementById('new-student-name').value = '';
+      document.getElementById('new-student-class').value = '';
+    } catch (e) {
+      console.error('Error adding student:', e);
+    }
+  };
+
+  window.deleteStudent = async function(studentId, studentName) {
+    if (!confirm(`Delete ${studentName} and all incidents?`)) return;
+    try {
+      // delete incidents in current course for that student
+      const q = query(collection(db, INCIDENTS_COLLECTION()), where('studentId', '==', studentId));
+      const snap = await getDocs(q);
+      await Promise.all(snap.docs.map(d => deleteDoc(doc(db, INCIDENTS_COLLECTION(), d.id))));
+      // delete student
+      await deleteDoc(doc(db, STUDENTS_COLLECTION(), studentId));
+    } catch (e) {
+      console.error('Error deleting student:', e);
+    }
+  };
+
+  window.toggleIncident = async function(studentId, categoryId) {
+    if (!studentId) return;
+    const key = `${studentId}-${categoryId}`;
+    const existing = incidentsByDate[currentTrackingDate] && incidentsByDate[currentTrackingDate][key];
+
+    try {
       if (existing) {
         await deleteDoc(doc(db, INCIDENTS_COLLECTION(), existing.docId));
       } else {
         await addDoc(collection(db, INCIDENTS_COLLECTION()), {
           studentId,
           category: categoryId,
-          date: currentDate,
-          timestamp: Date.now(),
+          date: currentTrackingDate,
+          timestamp: Date.now()
         });
       }
-    };
+    } catch (e) {
+      console.error('Error toggling incident:', e);
+    }
+  };
 
-    window.renderTracker = () => {
-      const grid = document.getElementById("tracker-grid");
-      if (!students.length) {
-        grid.innerHTML = `<div class='loading'>No students found.</div>`;
-        return;
-      }
-      const dateIncidents = incidentsByDate[currentDate] || {};
-      const filtered = students.filter(
-        (s) => currentClass === "All" || s.class === currentClass
-      );
+  // -------------------------
+  // Reporting & charts
+  // -------------------------
+  function renderEmptyCharts() {
+    try { if (lineChart) lineChart.destroy(); } catch(e) {}
+    try { if (donutChart) donutChart.destroy(); } catch(e) {}
 
-      let html = `
-        <div class="main-grid grid-header">
-          <div>Student</div>
-          ${behaviorCategories.map((c) => `<div>${c.name}</div>`).join("")}
-        </div>
-      `;
-      filtered.forEach((s, i) => {
-        html += `<div class="grid-row">
-          <div class="grid-cell name">${s.name} <span style="color:#9ca3af; font-size:0.8rem;">(${s.class})</span></div>
-          ${behaviorCategories
-            .map((cat) => {
-              const key = `${s.id}-${cat.id}`;
-              const logged = dateIncidents[key];
-              return `<div class="grid-cell"><div class="incident-btn ${
-                logged ? "logged" : ""
-              }" onclick="toggleIncident('${s.id}',${cat.id})">${
-                logged
-                  ? '<i class="fas fa-times-circle"></i>'
-                  : '<i class="far fa-circle"></i>'
-              }</div></div>`;
-            })
-            .join("")}
-        </div>`;
-      });
+    const ctxLine = lineCanvas.getContext('2d');
+    lineChart = new Chart(ctxLine, {
+      type: 'line',
+      data: { labels: lastNDates(windowDays).map(d => d.slice(5)), datasets: behaviorCategories.map(c => ({ label: c.name, data: Array(windowDays).fill(0), borderColor: c.color, backgroundColor: c.color, tension: 0.25, fill: false })) },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } }, scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } } }
+    });
 
-      grid.innerHTML = html;
-    };
+    const ctxDonut = donutCanvas.getContext('2d');
+    donutChart = new Chart(ctxDonut, {
+      type: 'doughnut',
+      data: { labels: behaviorCategories.map(c => c.name), datasets: [{ data: behaviorCategories.map(()=>0), backgroundColor: behaviorCategories.map(c => c.color) }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+    });
+  }
 
-    window.renderReport = () => {
-      const select = document.getElementById("report-student-select");
-      const view = document.getElementById("report-view");
-      select.innerHTML =
-        '<option value="">-- Select Student --</option>' +
-        students
-          .map(
-            (s) =>
-              `<option value="${s.id}">${s.name} (${s.class || ""})</option>`
-          )
-          .join("");
-
-      const studentId = select.value;
-      if (!studentId) {
-        view.innerHTML = `<p class="loading">Select a student to view their 3-week incident chart.</p>`;
-        return;
-      }
-
-      const today = new Date();
-      const startDate = new Date();
-      startDate.setDate(today.getDate() - 20);
-      const labels = [];
-      const datasets = behaviorCategories.map((cat) => ({
-        label: cat.name,
-        data: [],
-        borderWidth: 2,
-        fill: false,
-      }));
-
-      for (let i = 0; i < 21; i++) {
-        const d = new Date(startDate);
-        d.setDate(startDate.getDate() + i);
-        const dateKey = formatDate(d);
-        labels.push(dateKey);
-        behaviorCategories.forEach((cat, idx) => {
-          let count = 0;
-          if (incidentsByDate[dateKey]) {
-            Object.values(incidentsByDate[dateKey]).forEach((incident) => {
-              if (incident.studentId === studentId && incident.category === cat.id)
-                count++;
-            });
+  function buildLineDatasets(selectedStudentId, daysCount) {
+    const labels = lastNDates(daysCount);
+    const datasets = behaviorCategories.map(cat => {
+      const data = labels.map(date => {
+        const dayMap = incidentsByDate[date] || {};
+        let count = 0;
+        for (const k in dayMap) {
+          const inc = dayMap[k];
+          if (inc.category === cat.id) {
+            if (selectedStudentId && inc.studentId !== selectedStudentId) continue;
+            const st = students.find(s => s.id === inc.studentId);
+            if (currentClassFilter !== 'All' && (!st || st.class !== currentClassFilter)) continue;
+            count++;
           }
-          datasets[idx].data.push(count);
-        });
-      }
-
-      const colors = ["#dc2626", "#f97316", "#facc15", "#22c55e", "#3b82f6"];
-      datasets.forEach((d, i) => (d.borderColor = colors[i]));
-
-      view.innerHTML = `<canvas id="report-chart"></canvas>`;
-      const ctx = document.getElementById("report-chart");
-      if (reportChart) reportChart.destroy();
-      reportChart = new Chart(ctx, {
-        type: "line",
-        data: { labels, datasets },
-        options: {
-          responsive: true,
-          plugins: {
-            legend: { position: "top" },
-            title: {
-              display: true,
-              text: "3-Week Incident Trends",
-              color: "#b91c1c",
-              font: { size: 18, weight: "bold" },
-            },
-          },
-          scales: {
-            x: { ticks: { color: "#374151" } },
-            y: { beginAtZero: true, ticks: { stepSize: 1 } },
-          },
-        },
+        }
+        return count;
       });
-    };
+      return { label: cat.name, data, borderColor: cat.color, backgroundColor: cat.color, tension: 0.25, fill: false, pointRadius: 3 };
+    });
+    return { labels: labels.map(d => d.slice(5)), datasets };
+  }
+
+  function buildDonutData(selectedStudentId, daysCount) {
+    const labels = behaviorCategories.map(c => c.name);
+    const counts = behaviorCategories.map(c => 0);
+    const dates = lastNDates(daysCount);
+    for (const date of dates) {
+      const dayMap = incidentsByDate[date] || {};
+      for (const k in dayMap) {
+        const inc = dayMap[k];
+        const st = students.find(s => s.id === inc.studentId);
+        if (currentClassFilter !== 'All' && (!st || st.class !== currentClassFilter)) continue;
+        if (selectedStudentId && inc.studentId !== selectedStudentId) continue;
+        const idx = behaviorCategories.findIndex(b => b.id === inc.category);
+        if (idx >= 0) counts[idx]++;
+      }
+    }
+    return { labels, counts, colors: behaviorCategories.map(c => c.color) };
+  }
+
+  function updateCharts() {
+    const selectedStudentId = studentSelectEl.value || null;
+    const days = Number(windowDays) || 21;
+
+    // Line
+    const lineData = buildLineDatasets(selectedStudentId, days);
+    try { if (lineChart) lineChart.destroy(); } catch(e) {}
+    lineChart = new Chart(lineCanvas.getContext('2d'), {
+      type: 'line',
+      data: { labels: lineData.labels, datasets: lineData.datasets },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        animation:{ duration:600, easing:'easeOutQuart' },
+        plugins:{ legend:{ position:'bottom' } },
+        scales:{ y:{ beginAtZero:true, ticks:{ precision:0 } } }
+      }
+    });
+
+    // Donut
+    const donut = buildDonutData(selectedStudentId, days);
+    try { if (donutChart) donutChart.destroy(); } catch(e) {}
+    donutChart = new Chart(donutCanvas.getContext('2d'), {
+      type: 'doughnut',
+      data: { labels: donut.labels, datasets: [{ data: donut.counts, backgroundColor: donut.colors }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'bottom' } } }
+    });
+  }
+
+  // -------------------------
+  // UI wiring
+  // -------------------------
+  gradeSelectEl.addEventListener('change', (e) => {
+    const newCourse = e.target.value;
+    attachListenersForCourse(newCourse);
+    // reset filters to 'All' and student selection
+    currentClassFilter = 'All';
+    studentSelectEl.value = '';
+  });
+
+  classSelectEl.addEventListener('change', (e) => {
+    currentClassFilter = e.target.value;
+    renderGrid();
+    updateCharts();
+  });
+
+  studentSelectEl.addEventListener('change', () => updateCharts());
+
+  datePickerEl.addEventListener('change', (e) => {
+    currentTrackingDate = e.target.value;
+    renderGrid();
+  });
+
+  rangeSliderEl.addEventListener('input', (e) => {
+    rangeDaysEl.textContent = e.target.value;
+    clearTimeout(window._rangeTimer);
+    window._rangeTimer = setTimeout(() => {
+      windowDays = Number(e.target.value);
+      updateCharts();
+    }, 180);
+  });
+
+  document.getElementById('btn-refresh').addEventListener('click', () => {
+    renderGrid();
+    updateCharts();
+  });
+
+  showSummaryBtn.addEventListener('click', () => {
+    const lc = lineCanvas, dc = donutCanvas;
+    if (dc.style.display === 'block') {
+      dc.style.display = 'none';
+      lc.style.display = 'block';
+      showSummaryBtn.textContent = 'Show Summary';
+    } else {
+      dc.style.display = 'block';
+      lc.style.display = 'none';
+      showSummaryBtn.textContent = 'Show Chart';
+      updateCharts();
+    }
+  });
+
+  manageBtn.addEventListener('click', () => {
+    manageModal.classList.add('visible');
+    renderStudentList();
+  });
+
+  window.closeModal = (id) => document.getElementById(id).classList.remove('visible');
+
+  function renderStudentList() {
+    studentListContainer.innerHTML = students.map(s => `
+      <div class="student-list-item">
+        <div><strong>${escapeHtml(s.name)}</strong> <small class="muted">${s.class ? '('+escapeHtml(s.class)+')' : ''}</small></div>
+        <div><button class="btn secondary" onclick="deleteStudent('${s.id}','${escapeHtml(s.name)}')">Delete</button></div>
+      </div>
+    `).join('');
+  }
+
+  // -------------------------
+  // Boot
+  // -------------------------
+  datePickerEl.max = formatDate(new Date());
+  datePickerEl.value = currentTrackingDate;
+  rangeDaysEl.textContent = windowDays;
+  rangeSliderEl.value = windowDays;
+  gradeSelectEl.value = currentCourse;
+
+  // Initialize
+  init();
+
+  // expose some useful debug helpers
+  window.updateCharts = updateCharts;
+  window.renderGrid = renderGrid;
+  window.attachListenersForCourse = attachListenersForCourse;
+
   </script>
 </body>
 </html>

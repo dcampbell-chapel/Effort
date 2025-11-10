@@ -92,13 +92,7 @@
         <div id="user-id-display" style="margin-left:8px;color:var(--muted);font-weight:600;">Shared workspace</div>
       </div>
 
-      <div style="display:flex; gap:0.5rem; align-items:center;">
-        <button id="manage-btn" class="btn"><i class="fas fa-users-cog"></i> Manage</button>
-        <button id="show-summary-btn" class="btn secondary">Show Summary</button>
-      </div>
-    </div>
-
-    <!-- tracker -->
+         <!-- tracker -->
     <div id="tracker-panel" class="panel">
       <div id="tracker-grid">Loading tracker...</div>
     </div>
@@ -190,8 +184,6 @@
   const showSummaryBtn = document.getElementById('show-summary-btn');
   const lineCanvas = document.getElementById('lineChart');
   const donutCanvas = document.getElementById('donutChart');
-  const manageBtn = document.getElementById('manage-btn');
-  const manageModal = document.getElementById('manage-students-modal');
   const studentListContainer = document.getElementById('student-list-container');
 
   let studentsUnsub = null;
@@ -333,7 +325,7 @@
 
   function renderGrid() {
     if (!students.length) {
-      trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students yet. Add students via Manage.</div>';
+      trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students yet. </div>';
       return;
     }
 
@@ -554,21 +546,6 @@
     }
   });
 
-  manageBtn.addEventListener('click', () => {
-    manageModal.classList.add('visible');
-    renderStudentList();
-  });
-
-  window.closeModal = (id) => document.getElementById(id).classList.remove('visible');
-
-  function renderStudentList() {
-    studentListContainer.innerHTML = students.map(s => `
-      <div class="student-list-item">
-        <div><strong>${escapeHtml(s.name)}</strong> <small class="muted">${s.class ? '('+escapeHtml(s.class)+')' : ''}</small></div>
-        <div><button class="btn secondary" onclick="deleteStudent('${s.id}','${escapeHtml(s.name)}')">Delete</button></div>
-      </div>
-    `).join('');
-  }
 
   // -------------------------
   // Boot

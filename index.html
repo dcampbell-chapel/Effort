@@ -41,6 +41,24 @@
     .incident-cell:hover { background:#fff1f1; }
     .incident-cell.logged { background:#fee2e2; color:#7f1d1d; font-weight:700; }
 
+    /* Sticky tracker header row */
+    .grid-header-row {
+      display: grid;
+      grid-template-columns: 1.5fr repeat(5, 1fr);
+      background: #f3f4f6;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .grid-header-row .grid-header-cell {
+      font-weight: 700;
+      padding: 0.6rem;
+      text-align: center;
+      color: #374151;
+    }
+
     /* charts */
     .chart-controls { display:flex; gap:1rem; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; }
     .range { display:flex; gap:0.5rem; align-items:center; }
@@ -64,12 +82,32 @@
       max-width: 1152px;
     }
     
-    /* make header row sticky inside the scrollable wrapper */
+    /* remove or comment out this old rule */
+    /*
     .tracker-wrapper .grid-header-cell {
       position: sticky;
       top: 0;
       background: #f3f4f6;
       z-index: 5;
+    }
+    */
+    
+    /* NEW sticky tracker header row */
+    .grid-header-row {
+      display: grid;
+      grid-template-columns: 1.5fr repeat(5, 1fr);
+      background: #f3f4f6;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .grid-header-row .grid-header-cell {
+      font-weight: 700;
+      padding: 0.6rem;
+      text-align: center;
+      color: #374151;
     }
 
     @media (max-width:720px) {
@@ -352,31 +390,55 @@
     if (prev && students.some(s => s.id === prev)) studentSelectEl.value = prev;
   }
 
-  function renderGrid() {
-    if (!students.length) {
-      trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students yet. Add students via Manage.</div>';
-      return;
-    }
-
-    const filteredStudents = currentClassFilter === 'All' ? students : students.filter(s => s.class === currentClassFilter);
-    if (!filteredStudents.length) {
-      trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students for the selected class.</div>';
-      return;
-    }
-
-    const parts = [];
-    parts.push(`<div class="main-grid">`);
-    parts.push(`<div class="grid-header-cell">Student</div>`);
-    for (const c of behaviorCategories) parts.push(`<div class="grid-header-cell">${c.name}</div>`);
-
-    for (const s of filteredStudents) {
-      parts.push(`<div class="grid-row-name grid-row-cell">${escapeHtml(s.name)} <small class="muted">(${escapeHtml(s.class || '')})</small></div>`);
-      for (const c of behaviorCategories) {
-        const key = `${s.id}-${c.id}`;
-        const isLogged = !!(incidentsByDate[currentTrackingDate] && incidentsByDate[currentTrackingDate][key]);
-        parts.push(`<div class="grid-row-cell incident-cell ${isLogged ? 'logged' : ''}" onclick="toggleIncident('${s.id}', ${c.id})" title="${isLogged ? 'Click to unmark' : 'Click to mark'}">${isLogged ? '❌' : '○'}</div>`);
+    function renderGrid() {
+      if (!students.length) {
+        trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students yet. Add students via Manage.</div>';
+        return;
       }
+    
+      const filteredStudents = currentClassFilter === 'All'
+        ? students
+        : students.filter(s => s.class === currentClassFilter);
+    
+      if (!filteredStudents.length) {
+        trackerGridEl.innerHTML = '<div style="padding:1rem;color:var(--muted)">No students for the selected class.</div>';
+        return;
+      }
+    
+      const parts = [];
+    
+      // 🧠 Header row (separate, stays fixed)
+      parts.push(`
+        <div class="grid-header-row">
+          <div class="grid-header-cell">Student</div>
+          ${behaviorCategories.map(c => `<div class="grid-header-cell">${c.name}</div>`).join('')}
+        </div>
+      `);
+    
+      // 🧠 Scrollable content grid
+      parts.push(`<div class="main-grid">`);
+    
+      for (const s of filteredStudents) {
+        parts.push(`<div class="grid-row-name grid-row-cell">${escapeHtml(s.name)} <small class="muted">(${escapeHtml(s.class || '')})</small></div>`);
+        for (const c of behaviorCategories) {
+          const key = `${s.id}-${c.id}`;
+          const isLogged = !!(incidentsByDate[currentTrackingDate] && incidentsByDate[currentTrackingDate][key]);
+          parts.push(`
+            <div
+              class="grid-row-cell incident-cell ${isLogged ? 'logged' : ''}"
+              onclick="toggleIncident('${s.id}', ${c.id})"
+              title="${isLogged ? 'Click to unmark' : 'Click to mark'}"
+            >
+              ${isLogged ? '❌' : '○'}
+            </div>
+          `);
+        }
+      }
+    
+      parts.push(`</div>`); // close main-grid
+      trackerGridEl.innerHTML = parts.join('');
     }
+
 
     parts.push(`</div>`);
     trackerGridEl.innerHTML = parts.join('');

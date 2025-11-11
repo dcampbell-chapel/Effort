@@ -54,6 +54,25 @@
     .student-list-item { display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0; border-bottom:1px solid #f3f4f6; }
     small.muted { color:var(--muted); }
 
+    /* tracker wrapper: scrollable grid with sticky headers */
+    .tracker-wrapper {
+      background: var(--panel);
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      overflow: auto;
+      max-height: 70vh;
+      margin: 0 auto;
+      max-width: 1152px;
+    }
+
+/* freeze the header cells */
+.grid-header-cell {
+  position: sticky;
+  top: 0;
+  background: #f3f4f6;
+  z-index: 5;
+}
+
     @media (max-width:720px) {
       .main-grid { grid-template-columns: 1fr repeat(5, 64px); }
       .chart-wrap { height:320px; }
@@ -100,8 +119,11 @@
 
     <!-- tracker -->
     <div id="tracker-panel" class="panel">
-      <div id="tracker-grid">Loading tracker...</div>
+      <div class="tracker-wrapper">
+        <div id="tracker-grid">Loading tracker...</div>
+      </div>
     </div>
+
 
     <!-- charts -->
     <div class="panel">

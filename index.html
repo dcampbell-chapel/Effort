@@ -419,7 +419,12 @@
       parts.push(`<div class="main-grid">`);
     
       for (const s of filteredStudents) {
-        parts.push(`<div class="grid-row-name grid-row-cell">${escapeHtml(s.name)} <small class="muted">(${escapeHtml(s.class || '')})</small></div>`);
+        parts.push(`
+          <div class="grid-row-name grid-row-cell">
+            ${escapeHtml(s.name)} <small class="muted">(${escapeHtml(s.class || '')})</small>
+          </div>
+        `);
+    
         for (const c of behaviorCategories) {
           const key = `${s.id}-${c.id}`;
           const isLogged = !!(incidentsByDate[currentTrackingDate] && incidentsByDate[currentTrackingDate][key]);
@@ -439,10 +444,6 @@
       trackerGridEl.innerHTML = parts.join('');
     }
 
-
-    parts.push(`</div>`);
-    trackerGridEl.innerHTML = parts.join('');
-  }
 
   // -------------------------
   // CRUD: students & incidents
